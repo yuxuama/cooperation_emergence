@@ -1,0 +1,15 @@
+# WAML document with parameters of the simulation
+
+Number of iteraction: 1
+Community size: 10
+Community minimum: 0.8
+Temperature: 0
+Cognitive capacity: 3
+
+Strategy distributions:
+  Trustful: 0.17
+  Random: 0.12
+  Optimist: 0.2
+  Pessimist: 0.21
+  Envious: 0.3
+ 

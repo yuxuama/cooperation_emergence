@@ -8,7 +8,7 @@ import numpy as np
 class Network:
 
     def __init__(self, parameters):
-        # defining properties
+        ## defining properties
         self.max_iter = parameters["Number of interaction"]
         self.size = parameters["Community size"]
         self.min_link = parameters["Community minimum"]
@@ -16,36 +16,32 @@ class Network:
         self.cognitive_capa = parameters["Cognitive capacity"]
         
         strategy_distrib = parameters["Strategy distributions"]
-        self.phenotypes = strategy_distrib.keys()
-        self.distribution_grid = [0]
+        self.phenotypes = list(strategy_distrib.keys())
+        self.distribution_grid = [0] # Used to initialized populations of each phenotypes according to parameters.
         for p in strategy_distrib.values():
             self.distribution_grid.append(self.distribution_grid[-1] + p)
+        self.distribution_grid = self.size * np.array(self.distribution_grid) 
         
-        # creating structure
-        ## Creating verteces
+        ## creating structure
+        # Creating verteces
 
-        self.verteces = []
-        while len(self.verteces) < self.size:
-            self.create_vertex()
-        self.verteces = np.array(self.verteces)
+        self.verteces = np.zeros(self.size, dtype=Vertex)
+        for i in range(self.size):
+            self.create_vertex(i)
         
-        ## Creating trust adjency matrix
+        # Creating trust adjency matrix
         self.trust = np.zeros((self.size, self.size))
 
-        ## Create link matrix
-        self.link = [{} for _ in range(self.size)]
+        # Create link matrix
+        self.link = [set() for _ in range(self.size)]
     
-    def create_vertex(self):
+    def create_vertex(self, index):
         """Add a person into the simulation"""
-        index = len(self.verteces) - 1
-
         # Choosing phenotypes according to distribution
-        draw = np.random.rand()
         p = 0
-        while draw > self.distribution_grid[p]:
+        while index >= self.distribution_grid[p]:
             p += 1
-        
-        self.verteces[self.last_index] = Vertex(self.phenotypes[p-1], index)
+        self.verteces[index] = Vertex(self.phenotypes[p-1], index)
 
     def create_link(self, start, end):
         """Create a link between two vertices"""
@@ -56,12 +52,34 @@ class Network:
         self.link[start].remove(end)
 
     def interact(self):
-        """Choose randomly two vertices and a game matrix a resolve the interaction"""
-        pass
+        """Choose randomly two vertices and a game matrix a resolve the interaction
+        We follow the paper and chose a game matrix of the form
+        | R | S |
+        | T | P |
+        where R = 10, P = 5
+        and S \in [0, 10]
+        and T \in [5, 15]
+        """
+        
+        pair = np.random.choice(self.size, 2)
+        T = np.random.randint(5, 15)
+        S = np.random.randint(0, 10)
+
+        game_matrix = np.array([[10, S], [T, 5]])
+        choices = np.zeros(2)
+        choices[0] = self.verteces[pair[0]].choose(game_matrix, self.temp)
+        choices[1] = self.verteces[pair[1]].choose(game_matrix, self.temp)
+
+        # ... To be continued
     
     def get_adjency_link_matrix(self):
-        pass
+        """Return the adjency matrix of all link"""
+        link_adjency_matrix = np.zeros((self.size, self.size), dtype=bool)
+        for i in range(self.size):
+            for j in self.link[i]:
+                link_adjency_matrix[i, j] = True
 
+        return link_adjency_matrix
 
 """Vertex class for handling people"""
 
@@ -106,3 +124,7 @@ class Vertex:
             return strategic_response
 
         return 1 - strategic_response 
+    
+    def __str__(self):
+        """Allows to print vertex in a readable way"""
+        return self.phenotype + " " + str(self.index)

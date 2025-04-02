@@ -86,13 +86,42 @@ class Network:
         and S \in [0, 10]
         and T \in [5, 15]
         """
+
+        gain = 1
+        loss = -1
         
         pair = np.random.choice(self.size, 2)
         T = np.random.randint(5, 15)
         S = np.random.randint(0, 10)
 
         game_matrix = np.array([[10, S], [T, 5]])
-        choices = np.zeros(2)
+        
+        v1 = self.verteces[pair[0]]
+        v2 = self.verteces[pair[1]]
+        
+        choice1, happy1 = v1.choose(v2, game_matrix, self.temp)
+        choice2, happy2 = v2.choose(v1, game_matrix, self.temp)
+
+        if happy1 is None:
+            happy1 = np.random.randint(2)
+        if happy2 is None:
+            happy2 = np.random.randint(2)
+        
+        if choice2 == happy1:
+            v1.update_trust(v2, gain)
+        else:
+            v1.update_trust(v2, loss)
+        
+        if choice1 == happy2:
+            v2.update_trust(v1, gain)
+        else:
+            v2.update_trust(v1, loss)
+
+
+    def play(self):
+        """Run the simulation"""
+        for i in range(self.max_iter):
+            self.interact()
 
     def get_adjency_trust_matrix(self):
         """Return the adjency matrix of all trust"""
@@ -139,7 +168,6 @@ class Network:
                     self.create_link(i, j)
 
 
-
 """Vertex class for handling people"""
 
 class Vertex:
@@ -178,10 +206,12 @@ class Vertex:
         new_load = self.load + increment
         if other in self.trust:
             self.trust[other] += increment
-        else:
+            if self.trust[other] <= 0:
+                self.trust.pop(other)
+        elif increment > 0:
             self.trust[other] = increment
 
-        if self.trust[other] >= self.min_trust:
+        if self.trust_in(other) >= self.min_trust:
             self.create_link(other)
 
         if new_load > self.capacity:
@@ -217,9 +247,6 @@ class Vertex:
 
         trust = self.trust_in(other)
 
-        if trust > self.min_trust:
-            return 0
-
         strategic_response = 1
         happy_response = None
         if self.phenotype == "Envious":
@@ -229,7 +256,10 @@ class Vertex:
         elif self.phenotype == "Pessimist":
             if S > game_matrix[1, 1]:
                 strategic_response = 0 
-            happy_response = None # Happy if gain more than expected
+            if game_matrix[strategic_response, 0] > game_matrix[strategic_response, 1]:
+                happy_response = 0
+            else:
+                happy_response = 1 # Happy if gain more than expected with his play
         elif self.phenotype == "Optimist":
             if T < game_matrix[0, 0]:
                 strategic_response = 0
@@ -238,9 +268,11 @@ class Vertex:
             strategic_response = 0
             happy_response = 0 # Happy if the other is indeed trustful
         elif self.phenotype == "Random":
-            draw = np.random.rand()
-            if draw >= 0.5:
-                strategic_response = 0
+            strategic_response = np.random.randint(2)
+        
+        if trust > self.min_trust:
+            strategic_response = 0
+            happy_response = 0
 
         if temperature == 0:
             return strategic_response, happy_response

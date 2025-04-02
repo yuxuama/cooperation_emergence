@@ -33,6 +33,7 @@ class Network:
         self.trust = np.zeros((self.size, self.size))
 
         # Create link matrix
+        # Format specification: link[i] is the set of the indexes of all the verteces that vertex i points to
         self.link = [set() for _ in range(self.size)]
     
     def create_vertex(self, index):
@@ -44,12 +45,40 @@ class Network:
         self.verteces[index] = Vertex(self.phenotypes[p-1], index)
 
     def create_link(self, start, end):
-        """Create a link between two vertices"""
+        """Create a link between two vertices
+        `start`: index or Vertex to start the link with
+        `end`: index or Vertex to end the link with"""
+
+        if type(start) == Vertex:
+            start = start.index
+        if type(end) == Vertex:
+            end = end.index
+
         self.link[start].add(end)
     
     def remove_link(self, start, end):
-        """Remove a link between two vertices"""
+        """Remove a link between two vertices
+        `start`: index or Vertex to start the link with
+        `end`: index or Vertex to end the link with"""
+
+        if type(start) == Vertex:
+            start = start.index
+        if type(end) == Vertex:
+            end = end.index
+
         self.link[start].remove(end)
+
+    def are_linked(self, start, end):
+        """return True if there is a link from start to end
+        `start`: index or Vertex to start the link with
+        `end`: index or Vertex to end the link with"""
+        
+        if type(start) == Vertex:
+            start = start.index
+        if type(end) == Vertex:
+            end = end.index
+        
+        return end in self.link[start]
 
     def interact(self):
         """Choose randomly two vertices and a game matrix a resolve the interaction
@@ -80,12 +109,34 @@ class Network:
                 link_adjency_matrix[i, j] = True
 
         return link_adjency_matrix
+    
+    def set_link_from_adjency_matrix(self, adjency_matrix):
+        """Set up the link dictionnary to represent the adjency matrix
+        `adjency matrix` must be a self.size * self.size boolean array
+        
+        Warning: this overwrite all pre-existing links"""
+
+        assert adjency_matrix.shape == (self.size, self.size)
+
+        self.link = [set() for _ in range(self.size)]
+
+        for i in range(self.size):
+            for j in range(self.size):
+                if adjency_matrix[i, j]:
+                    self.create_link(i, j)
+
+
 
 """Vertex class for handling people"""
 
 class Vertex:
 
+    valid_phenotypes = {"Trustful", "Random", "Optimist", "Pessimist", "Envious"}
+
     def __init__(self, phenotype, index):
+
+        assert phenotype in self.valid_phenotypes
+
         self.phenotype = phenotype
         self.index = index
         self.load = 0

@@ -88,9 +88,9 @@ class Network:
         """
 
         gain = 1
-        loss = -1
+        loss = -2
         
-        pair = np.random.choice(self.size, 2)
+        pair = np.random.choice(self.size, 2, replace=False)
         T = np.random.randint(5, 15)
         S = np.random.randint(0, 10)
 
@@ -120,7 +120,7 @@ class Network:
 
     def play(self):
         """Run the simulation"""
-        for i in range(self.max_iter):
+        for _ in range(self.max_iter):
             self.interact()
 
     def get_adjency_trust_matrix(self):
@@ -210,22 +210,22 @@ class Vertex:
                 self.trust.pop(other)
         elif increment > 0:
             self.trust[other] = increment
+        else:
+            new_load = self.load
 
         if self.trust_in(other) >= self.min_trust:
             self.create_link(other)
 
         if new_load > self.capacity:
-            draw = np.random.randint(0, len(self.trust))
-            print(draw)
+            draw = np.random.randint(len(self.trust))
             drawn_vertex = list(self.trust.keys())[draw]
             self.trust[drawn_vertex] -= increment
             if self.trust[drawn_vertex] <= 0:
                 self.trust.pop(drawn_vertex)
             if self.is_linked(drawn_vertex) and self.trust_in(drawn_vertex) < self.min_trust:
                 self.remove_link(drawn_vertex)
-        
-        self.load = min(new_load, self.capacity)
-            
+
+        self.load = min(self.capacity, new_load)
 
     def trust_in(self, end):
         """Return trust value with the vertex `end`"""
@@ -263,7 +263,12 @@ class Vertex:
         elif self.phenotype == "Optimist":
             if T < game_matrix[0, 0]:
                 strategic_response = 0
-            happy_response = 0 # Happy if the other cooperates as expected
+            sum0 = game_matrix[strategic_response, 0] + game_matrix[0, strategic_response]
+            sum1 = game_matrix[strategic_response, 1] + game_matrix[1, strategic_response]
+            if sum0 > sum1:
+                happy_response = 0
+            else:
+                happy_response = 1 # Happy if the other cooperates as expected
         elif self.phenotype == "Trustful":
             strategic_response = 0
             happy_response = 0 # Happy if the other is indeed trustful

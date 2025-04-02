@@ -1,10 +1,10 @@
 # WAML document with parameters of the simulation
 
-Number of interaction: 10
-Community size: 10
-Link minimum: 2
+Number of interaction: 1000
+Community size: 20
+Link minimum: 5
 Temperature: 0
-Cognitive capacity: 2
+Cognitive capacity: 50
 
 Strategy distributions:
   Trustful: 0.17

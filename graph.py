@@ -24,9 +24,9 @@ class Network:
         self.distribution_grid = self.size * np.array(self.distribution_grid)
          
         ## creating structure
-        # Creating verteces
+        # Creating vertices
 
-        self.verteces = np.zeros(self.size, dtype=Vertex)
+        self.vertices = np.zeros(self.size, dtype=Vertex)
         for i in range(self.size):
             self.create_vertex(i)
     
@@ -36,16 +36,16 @@ class Network:
         p = 0
         while index >= self.distribution_grid[p]:
             p += 1
-        self.verteces[index] = Vertex(self.phenotypes[p-1], index, self.parameters)
+        self.vertices[index] = Vertex(self.phenotypes[p-1], index, self.parameters)
 
     def create_link(self, start, end):
         """Create a link between two vertices
         `start`: index or Vertex to start the link with
         `end`: index or Vertex to end the link with"""
         if type(start) == int:
-            start = self.verteces[start]
+            start = self.vertices[start]
         if type(end) == int:
-            end = self.verteces[end]
+            end = self.vertices[end]
         start.create_link(end)       
     
     def remove_link(self, start, end):
@@ -53,17 +53,17 @@ class Network:
         `start`: index or Vertex to start the link with
         `end`: index or Vertex to end the link with"""
         if type(start) == int:
-            start = self.verteces[start]
+            start = self.vertices[start]
         if type(end) == int:
-            end = self.verteces[end]
+            end = self.vertices[end]
         start.remove_link(end)
 
     def is_linked(self, start, end):
         """return True if start and end are linked"""
         if type(start) == int:
-            start = self.verteces[start]
+            start = self.vertices[start]
         if type(end) == int:
-            end = self.verteces[end]
+            end = self.vertices[end]
         start.is_linked(end)
 
     def trust_value(self, start, end):
@@ -71,9 +71,9 @@ class Network:
         `start`: index or Vertex to start the link with
         `end`: index or Vertex to end the link with"""
         if type(start) == int:
-            start = self.verteces[start]
+            start = self.vertices[start]
         if type(end) == int:
-            end = self.verteces[end]
+            end = self.vertices[end]
             
         return start.trust_in(end)
 
@@ -88,7 +88,7 @@ class Network:
         """
 
         gain = 1
-        loss = -2
+        loss = -1
         
         pair = np.random.choice(self.size, 2, replace=False)
         T = np.random.randint(5, 15)
@@ -96,8 +96,8 @@ class Network:
 
         game_matrix = np.array([[10, S], [T, 5]])
         
-        v1 = self.verteces[pair[0]]
-        v2 = self.verteces[pair[1]]
+        v1 = self.vertices[pair[0]]
+        v2 = self.vertices[pair[1]]
         
         choice1, happy1 = v1.choose(v2, game_matrix, self.temp)
         choice2, happy2 = v2.choose(v1, game_matrix, self.temp)
@@ -127,9 +127,9 @@ class Network:
         """Return the adjency matrix of all trust"""
         trust_adjency_matrix = np.zeros((self.size, self.size))
         for i in range(self.size):
-            v = self.verteces[i]
+            v = self.vertices[i]
             for j in range(self.size):
-                trust_adjency_matrix[i, j] = v.trust_in(self.verteces[j])
+                trust_adjency_matrix[i, j] = v.trust_in(self.vertices[j])
         return trust_adjency_matrix
 
     def set_adjency_trust_matrix(self, adjency_matrix):
@@ -139,16 +139,16 @@ class Network:
         assert np.max(np.sum(adjency_matrix, axis=1)) <= self.cognitive_capa
         
         for i in range(self.size):
-            v = self.verteces[i]
+            v = self.vertices[i]
             for j in range(self.size):
-                vend = self.verteces[j]
+                vend = self.vertices[j]
                 v.update_trust(vend, adjency_matrix[i, j])
 
     def get_adjency_link_matrix(self):
         """Return the adjency matrix of all link"""
         link_adjency_matrix = np.zeros((self.size, self.size), dtype=bool)
         for i in range(self.size):
-            v = self.verteces[i]
+            v = self.vertices[i]
             for vend in v.link:
                 link_adjency_matrix[i, vend.index] = True
 

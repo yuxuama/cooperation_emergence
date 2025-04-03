@@ -118,48 +118,48 @@ class Network:
         for _ in range(self.max_iter):
             self.interact()
 
-    def get_adjency_trust_matrix(self):
-        """Return the adjency matrix of all trust"""
-        trust_adjency_matrix = np.zeros((self.size, self.size))
+    def get_adjacency_trust_matrix(self):
+        """Return the adjacency matrix of all trust"""
+        trust_adjacency_matrix = np.zeros((self.size, self.size))
         for i in range(self.size):
             v = self.vertices[i]
             for j in range(self.size):
-                trust_adjency_matrix[i, j] = v.trust_in(self.vertices[j])
-        return trust_adjency_matrix
+                trust_adjacency_matrix[i, j] = v.trust_in(self.vertices[j])
+        return trust_adjacency_matrix
 
-    def set_adjency_trust_matrix(self, adjency_matrix):
-        """Set all trust value to correspond to the adjency matrix"""
+    def set_adjacency_trust_matrix(self, adjacency_matrix):
+        """Set all trust value to correspond to the adjacency matrix"""
 
-        assert adjency_matrix.shape == (self.size, self.size)
-        assert np.max(np.sum(adjency_matrix, axis=1)) <= self.cognitive_capa
+        assert adjacency_matrix.shape == (self.size, self.size)
+        assert np.max(np.sum(adjacency_matrix, axis=1)) <= self.cognitive_capa
         
         for i in range(self.size):
             v = self.vertices[i]
             for j in range(self.size):
                 vend = self.vertices[j]
-                v.update_trust(vend, adjency_matrix[i, j])
+                v.update_trust(vend, adjacency_matrix[i, j])
 
-    def get_adjency_link_matrix(self):
-        """Return the adjency matrix of all link"""
-        link_adjency_matrix = np.zeros((self.size, self.size), dtype=bool)
+    def get_adjacency_link_matrix(self):
+        """Return the adjacency matrix of all link"""
+        link_adjacency_matrix = np.zeros((self.size, self.size), dtype=bool)
         for i in range(self.size):
             v = self.vertices[i]
             for vend in v.link:
-                link_adjency_matrix[i, vend.index] = True
+                link_adjacency_matrix[i, vend.index] = True
 
-        return link_adjency_matrix
+        return link_adjacency_matrix
     
-    def set_link_from_adjency_matrix(self, adjency_matrix):
-        """Set up the link dictionnary to represent the adjency matrix
-        `adjency matrix` must be a self.size * self.size array of all trust values
+    def set_link_from_adjacency_matrix(self, adjacency_matrix):
+        """Set up the link dictionnary to represent the adjacency matrix
+        `adjacency matrix` must be a self.size * self.size array of all trust values
         
         Warning: this does not overwrite existing links"""
 
-        assert adjency_matrix.shape == (self.size, self.size)
+        assert adjacency_matrix.shape == (self.size, self.size)
 
         for i in range(self.size):
             for j in range(self.size):
-                if adjency_matrix[i, j] > 0:
+                if adjacency_matrix[i, j] > 0:
                     self.create_link(i, j)
 
 

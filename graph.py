@@ -66,7 +66,7 @@ class Network:
             end = self.vertices[end]
         start.is_linked(end)
 
-    def trust_value(self, start, end):
+    def get_trust(self, start, end):
         """return the trust value between start and end
         `start`: index or Vertex to start the link with
         `end`: index or Vertex to end the link with"""
@@ -76,6 +76,14 @@ class Network:
             end = self.vertices[end]
             
         return start.trust_in(end)
+    
+    def set_trust(self, start, end, trust):
+        """Set the trust value of the trust edge starting from `start` and endind at `end` to `trust`"""
+        if type(start) == int:
+            start = self.vertices[start]
+        if type(end) == int:
+            end = self.vertices[end]
+        start.set_trust(end, trust)
 
     def interact(self):
         """Choose randomly two vertices and a game matrix a resolve the interaction
@@ -86,7 +94,6 @@ class Network:
         and S \in [0, 10]
         and T \in [5, 15]
         """
-
         gain = 1
         loss = -1
         
@@ -112,7 +119,6 @@ class Network:
         else:
             v2.update_trust(v1, loss)
 
-
     def play(self):
         """Run the simulation"""
         for _ in range(self.max_iter):
@@ -122,22 +128,18 @@ class Network:
         """Return the adjacency matrix of all trust"""
         trust_adjacency_matrix = np.zeros((self.size, self.size))
         for i in range(self.size):
-            v = self.vertices[i]
             for j in range(self.size):
-                trust_adjacency_matrix[i, j] = v.trust_in(self.vertices[j])
+                trust_adjacency_matrix[i, j] = self.get_trust(i, j)
         return trust_adjacency_matrix
 
     def set_adjacency_trust_matrix(self, adjacency_matrix):
         """Set all trust value to correspond to the adjacency matrix"""
-
         assert adjacency_matrix.shape == (self.size, self.size)
         assert np.max(np.sum(adjacency_matrix, axis=1)) <= self.cognitive_capa
-        
         for i in range(self.size):
-            v = self.vertices[i]
             for j in range(self.size):
-                vend = self.vertices[j]
-                v.update_trust(vend, adjacency_matrix[i, j])
+                if adjacency_matrix[i, j] > 0:
+                    self.set_trust(i, j, adjacency_matrix[i, j])
 
     def get_adjacency_link_matrix(self):
         """Return the adjacency matrix of all link"""
@@ -152,15 +154,14 @@ class Network:
     def set_link_from_adjacency_matrix(self, adjacency_matrix):
         """Set up the link dictionnary to represent the adjacency matrix
         `adjacency matrix` must be a self.size * self.size array of all trust values
-        
+        Assume a minimum trust value for all link
         Warning: this does not overwrite existing links"""
-
         assert adjacency_matrix.shape == (self.size, self.size)
-
         for i in range(self.size):
             for j in range(self.size):
                 if adjacency_matrix[i, j] > 0:
                     self.create_link(i, j)
+                    self.set_trust(i, j, self.min_trust)
 
 
 """Vertex class for handling people"""
@@ -217,7 +218,6 @@ class Vertex:
                 draw = np.random.randint(len(self.trust))
                 drawn_vertex = list(self.trust.keys())[draw]
                 
-                
                 if self.trust[drawn_vertex] >= diff:
                     self.trust[drawn_vertex] -= diff
                     if self.trust[drawn_vertex] <= 0:
@@ -226,7 +226,6 @@ class Vertex:
                 else:
                     diff -= self.trust[drawn_vertex]
                     self.trust.pop(drawn_vertex)
-
 
                 if self.is_linked(drawn_vertex) and self.trust_in(drawn_vertex) < self.min_trust:
                     self.remove_link(drawn_vertex)
@@ -238,6 +237,11 @@ class Vertex:
         if end in self.trust:
             return self.trust[end]
         return 0
+
+    def set_trust(self, end, trust):
+        self.trust[end] = trust
+        if trust >= self.min_trust:
+            self.create_link(end)
 
     def choose(self, other, game_matrix, temperature):
         """Return the choice of the person in the dyadic game based on temperature and phenotype

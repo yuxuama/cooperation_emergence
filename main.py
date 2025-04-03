@@ -2,7 +2,7 @@
 Execute simulation of the interacting network
 """
 from graph import Network
-from utils import parse_parameters, readable_adjency, histogram
+from utils import parse_parameters, create_social_groupe, readable_adjacency
 import numpy as np
 
 parameters_file = r"./parameters.yaml"
@@ -10,10 +10,20 @@ parameters_file = r"./parameters.yaml"
 if __name__ == '__main__':
     parameters = parse_parameters(parameters_file)
     net = Network(parameters)
+    
+    size = net.size
+    min_trust = net.min_trust
+
+    adjacency_matrix = np.zeros((size, size))
+    assignation = np.zeros(size, dtype=bool)
+
+    for _ in range(7):
+        create_social_groupe(3, assignation, adjacency_matrix, min_trust)
+
+    net.set_adjacency_trust_matrix(adjacency_matrix)
+    readable_adjacency(net.get_adjacency_link_matrix())
+    print()
     net.play()
-    for v in net.vertices:
-        print(v)
-    adj = net.get_adjency_link_matrix()
-    readable_adjency(adj)
-    histogram(net)
+    readable_adjacency(net.get_adjacency_link_matrix())
+
     

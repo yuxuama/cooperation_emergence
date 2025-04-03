@@ -19,12 +19,38 @@ def readable_adjacency(adjacency_matrix=np.ndarray):
         for j in range(n):
             print(adj[i, j], end=", ")
         print()
+
+def create_social_groupe(size, assignation, adjacency_matrix, min_trust):
+    """Create a fully connected graph of size `size` among an unassigned group of people
+    Allow to create disconnected social group"""
+    remaining = assignation.size - np.sum(assignation)
     
+    sample = np.random.choice(remaining, size, replace=False)
+    sample = np.sort(sample)
+    real_sample = np.zeros(size, dtype=int)
+
+    count = 0
+    s_pointer = 0
+    for i in range(assignation.size):
+        if not assignation[i]:
+            if sample[s_pointer] == count:
+                real_sample[s_pointer] = i
+                s_pointer += 1
+                if s_pointer >= size:
+                    break
+            count += 1
+    for i in range(size):
+        assignation[real_sample[i]] = True
+        for j in range(size):
+            if j != i:
+                adjacency_matrix[real_sample[i], real_sample[j]] = min_trust
+
+
 def histogram(network):
     """Return the mean histograms of trust: number of link per trust value"""
 
     mean = np.zeros(network.cognitive_capa+1, dtype=float)
-    bins = np.arange(network.cognitive_capa+1)
+    bins = np.arange(1, network.cognitive_capa+1)
 
     for v in network.vertices:
         data = np.array(list(v.trust.values()))

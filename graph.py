@@ -91,8 +91,8 @@ class Network:
         loss = -1
         
         pair = np.random.choice(self.size, 2, replace=False)
-        T = np.random.randint(5, 15)
-        S = np.random.randint(0, 10)
+        T = np.random.rand()*10 + 5 # Random number between 5 and 15
+        S = np.random.rand()*10 # Random number between 0 and 10
 
         game_matrix = np.array([[10, S], [T, 5]])
         
@@ -101,11 +101,6 @@ class Network:
         
         choice1, happy1 = v1.choose(v2, game_matrix, self.temp)
         choice2, happy2 = v2.choose(v1, game_matrix, self.temp)
-
-        if happy1 is None:
-            happy1 = np.random.randint(2)
-        if happy2 is None:
-            happy2 = np.random.randint(2)
         
         if choice2 == happy1:
             v1.update_trust(v2, gain)
@@ -217,13 +212,24 @@ class Vertex:
             self.create_link(other)
 
         if new_load > self.capacity:
-            draw = np.random.randint(len(self.trust))
-            drawn_vertex = list(self.trust.keys())[draw]
-            self.trust[drawn_vertex] -= increment
-            if self.trust[drawn_vertex] <= 0:
-                self.trust.pop(drawn_vertex)
-            if self.is_linked(drawn_vertex) and self.trust_in(drawn_vertex) < self.min_trust:
-                self.remove_link(drawn_vertex)
+            diff = new_load - self.capacity
+            while diff > 0:
+                draw = np.random.randint(len(self.trust))
+                drawn_vertex = list(self.trust.keys())[draw]
+                
+                
+                if self.trust[drawn_vertex] >= diff:
+                    self.trust[drawn_vertex] -= diff
+                    if self.trust[drawn_vertex] <= 0:
+                        self.trust.pop(drawn_vertex)
+                    diff = 0
+                else:
+                    diff -= self.trust[drawn_vertex]
+                    self.trust.pop(drawn_vertex)
+
+
+                if self.is_linked(drawn_vertex) and self.trust_in(drawn_vertex) < self.min_trust:
+                    self.remove_link(drawn_vertex)
 
         self.load = min(self.capacity, new_load)
 
@@ -263,17 +269,18 @@ class Vertex:
         elif self.phenotype == "Optimist":
             if T < game_matrix[0, 0]:
                 strategic_response = 0
-            sum0 = game_matrix[strategic_response, 0] + game_matrix[0, strategic_response]
-            sum1 = game_matrix[strategic_response, 1] + game_matrix[1, strategic_response]
+            sum0 = game_matrix[strategic_response, 0] + game_matrix[0, strategic_response] # Total payoff of both agent if the other cooperates
+            sum1 = game_matrix[strategic_response, 1] + game_matrix[1, strategic_response] # Same but when the other defects
             if sum0 > sum1:
                 happy_response = 0
             else:
-                happy_response = 1 # Happy if the other cooperates as expected
+                happy_response = 1 # Happy in case the sum of the game is maximum
         elif self.phenotype == "Trustful":
             strategic_response = 0
             happy_response = 0 # Happy if the other is indeed trustful
         elif self.phenotype == "Random":
             strategic_response = np.random.randint(2)
+            happy_response = np.random.randint(2)
         
         if trust > self.min_trust:
             strategic_response = 0
@@ -286,7 +293,7 @@ class Vertex:
         if draw > np.exp(- 1 / temperature):
             return strategic_response, happy_response
 
-        return 1 - strategic_response, None
+        return 1 - strategic_response, np.random.randint(2)
     
     def __str__(self):
         """Allows to print vertex in a readable way"""

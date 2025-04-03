@@ -26,7 +26,7 @@ def histogram(network):
     mean = np.zeros(network.cognitive_capa+1, dtype=float)
     bins = np.arange(network.cognitive_capa+1)
 
-    for v in network.verteces:
+    for v in network.vertices:
         data = np.array(list(v.trust.values()))
         n, _ = np.histogram(data, bins=max(data))
         for i in range(len(n)):

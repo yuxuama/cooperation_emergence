@@ -11,10 +11,9 @@ if __name__ == '__main__':
     parameters = parse_parameters(parameters_file)
     net = Network(parameters)
     net.play()
-    for v in net.verteces:
+    for v in net.vertices:
         print(v)
     adj = net.get_adjency_link_matrix()
-    print(net.get_adjency_trust_matrix())
     readable_adjency(adj)
     histogram(net)
     

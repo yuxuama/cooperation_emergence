@@ -1,11 +1,12 @@
 # WAML document with parameters of the simulation
 
-Number of interaction: 1000
+Number of interaction: 10000
 Community size: 20
 Link minimum: 5
 Temperature: 0
 Cognitive capacity: 50
 
+# Valid phenotypes (with caps): Trustful, Random, Optimistic, Pessimist, Envious
 Strategy distributions:
   Trustful: 0.17
   Random: 0.12

@@ -8,7 +8,7 @@ import numpy as np
 class Network:
 
     def __init__(self, parameters):
-        ## defining properties
+        # Properties definition
         self.parameters = parameters
         self.max_iter = parameters["Number of interaction"]
         self.size = parameters["Community size"]
@@ -23,7 +23,6 @@ class Network:
             self.distribution_grid.append(self.distribution_grid[-1] + p)
         self.distribution_grid = self.size * np.array(self.distribution_grid)
          
-        ## creating structure
         # Creating vertices
 
         self.vertices = np.zeros(self.size, dtype=Vertex)

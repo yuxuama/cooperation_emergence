@@ -18,13 +18,11 @@ if __name__ == '__main__':
     adjacency_matrix = np.zeros((size, size))
     assignation = np.zeros(size, dtype=bool)
 
-    for _ in range(2):
-        create_social_groupe(3, assignation, adjacency_matrix, min_trust)
+    for _ in range(25):
+        create_social_groupe(4, assignation, adjacency_matrix, min_trust)
 
     net.set_adjacency_trust_matrix(adjacency_matrix)
     readable_adjacency(net.get_adjacency_link_matrix())
-    print()
     net.play()
-    readable_adjacency(net.get_adjacency_link_matrix())
 
     

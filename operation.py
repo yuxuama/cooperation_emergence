@@ -5,6 +5,7 @@ Implement the operation stack structure in order to save
 import pandas as pd
 import numpy as np
 import h5py
+import os
 
 class OperationStack:
 
@@ -72,7 +73,8 @@ class OperationStack:
             self.iter_number += 1
 
     def save(self, dir_path):
-        """Save the stack in a folder"""        
+        """Save the stack in a folder"""
+        os.makedirs(dir_path, exist_ok=True)       
         df = pd.DataFrame(self.stacks)
         df.to_csv(dir_path + "stack.csv", index=False)
 

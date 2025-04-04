@@ -2,7 +2,7 @@
 All utils functions 
 """
 
-from yaml import safe_load
+from yaml import safe_load, dump
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -10,6 +10,11 @@ def parse_parameters(yaml_file):
     """Load parameters for the simulation from a yaml file"""
     stream = open(yaml_file, 'r')
     return safe_load(stream)
+
+def save_parameters(data, dir_path):
+    """Save the parameters represented by `data` in the `dir_path` directory"""
+    stream = open(dir_path + "parameters.yaml", 'w')
+    dump(data, stream=stream,default_flow_style=False)
 
 def readable_adjacency(adjacency_matrix=np.ndarray):
     """Gives the adjacency matric in a form usalble in https://graphonline.top/en/create_graph_by_matrix"""

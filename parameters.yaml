@@ -1,8 +1,8 @@
 # WAML document with parameters of the simulation
 
-Number of interaction: 10
-Community size: 6
-Link minimum: 1
+Number of interaction: 10000
+Community size: 100
+Link minimum: 5
 Temperature: 0
 Cognitive capacity: 50
 

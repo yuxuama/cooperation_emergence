@@ -3,6 +3,7 @@ Implement the mathematical graph structure of the network
 """
 import numpy as np
 from operation import OperationStack
+from utils import save_parameters
   
 """Graph class for network structure"""
 
@@ -127,7 +128,8 @@ class Network:
             v2.update_trust(v1, loss, self.oper)
 
     def play(self):
-        """Run the simulation"""
+        """Run the simulation
+        Return the OperationStack object which contains all the history of the simulation"""
         self.oper.activated = True
         self.oper.set_link_from_array(self.get_adjacency_link_matrix())
         self.oper.set_trust_from_array(self.get_adjacency_trust_matrix())
@@ -136,6 +138,8 @@ class Network:
             self.oper.next_iter()
         # Save
         self.oper.save(self.out_dir)
+        save_parameters(self.parameters, self.out_dir)
+        return self.oper
 
     def get_adjacency_trust_matrix(self):
         """Return the adjacency matrix of all trust"""

@@ -2,12 +2,13 @@
 Implement the mathematical graph structure of the network
 """
 import numpy as np
+from operation import OperationStack
   
 """Graph class for network structure"""
 
 class Network:
 
-    def __init__(self, parameters):
+    def __init__(self, parameters, out_dir):
         # Properties definition
         self.parameters = parameters
         self.max_iter = parameters["Number of interaction"]
@@ -16,6 +17,7 @@ class Network:
         self.temp = parameters["Temperature"]
         self.cognitive_capa = parameters["Cognitive capacity"]
         self.strategy_distrib = parameters["Strategy distributions"]
+        self.out_dir = out_dir
 
         self.phenotypes = list(self.strategy_distrib.keys())
         self.distribution_grid = [0] # Used to initialized populations of each phenotypes according to parameters.
@@ -28,6 +30,10 @@ class Network:
         self.vertices = np.zeros(self.size, dtype=Vertex)
         for i in range(self.size):
             self.create_vertex(i)
+
+        # Operation
+        self.oper = OperationStack()
+        self.oper.activated = False
     
     def create_vertex(self, index):
         """Add a person into the simulation"""
@@ -45,7 +51,8 @@ class Network:
             start = self.vertices[start]
         if type(end) == int:
             end = self.vertices[end]
-        start.create_link(end)       
+        start.create_link(end)
+        self.oper.add_link(start.index, end.index)     
     
     def remove_link(self, start, end):
         """Remove a link between two vertices
@@ -56,6 +63,7 @@ class Network:
         if type(end) == int:
             end = self.vertices[end]
         start.remove_link(end)
+        self.oper.remove_link(start.index, end.index)
 
     def is_linked(self, start, end):
         """return True if start and end are linked"""
@@ -109,19 +117,25 @@ class Network:
         choice2, happy2 = v2.choose(v1, game_matrix, self.temp)
         
         if choice2 == happy1:
-            v1.update_trust(v2, gain)
+            v1.update_trust(v2, gain, self.oper)
         else:
-            v1.update_trust(v2, loss)
+            v1.update_trust(v2, loss, self.oper)
         
         if choice1 == happy2:
-            v2.update_trust(v1, gain)
+            v2.update_trust(v1, gain, self.oper)
         else:
-            v2.update_trust(v1, loss)
+            v2.update_trust(v1, loss, self.oper)
 
     def play(self):
         """Run the simulation"""
+        self.oper.activated = True
+        self.oper.set_link_from_array(self.get_adjacency_link_matrix())
+        self.oper.set_trust_from_array(self.get_adjacency_trust_matrix())
         for _ in range(self.max_iter):
             self.interact()
+            self.oper.next_iter()
+        # Save
+        self.oper.save(self.out_dir)
 
     def get_adjacency_trust_matrix(self):
         """Return the adjacency matrix of all trust"""
@@ -149,18 +163,6 @@ class Network:
                 link_adjacency_matrix[i, vend.index] = True
 
         return link_adjacency_matrix
-    
-    def set_link_from_adjacency_matrix(self, adjacency_matrix):
-        """Set up the link dictionnary to represent the adjacency matrix
-        `adjacency matrix` must be a self.size * self.size array of all trust values
-        Assume a minimum trust value for all link
-        Warning: this does not overwrite existing links"""
-        assert adjacency_matrix.shape == (self.size, self.size)
-        for i in range(self.size):
-            for j in range(self.size):
-                if adjacency_matrix[i, j] > 0:
-                    self.create_link(i, j)
-                    self.set_trust(i, j, self.min_trust)
 
 
 """Vertex class for handling people"""
@@ -195,21 +197,24 @@ class Vertex:
         """return True if there is a link with end"""
         return end in self.link
 
-    def update_trust(self, other, increment):
+    def update_trust(self, other, increment, oper):
         """Change the trust value of a link according to the response of the other and the expectations of each phenotypes"""
         
         new_load = self.load + increment
         if other in self.trust:
             self.trust[other] += increment
+            oper.increment_trust(self.index, other.index, max(-self.trust[other], increment))
             if self.trust[other] <= 0:
                 self.trust.pop(other)
         elif increment > 0:
             self.trust[other] = increment
+            oper.increment_trust(self.index, other.index, increment)
         else:
             new_load = self.load
 
-        if self.trust_in(other) >= self.min_trust:
+        if other not in self.link and self.trust_in(other) >= self.min_trust:
             self.create_link(other)
+            oper.add_link(self.index, other.index)
 
         if new_load > self.capacity:
             diff = new_load - self.capacity
@@ -219,15 +224,18 @@ class Vertex:
                 
                 if self.trust[drawn_vertex] >= diff:
                     self.trust[drawn_vertex] -= diff
+                    oper.increment_trust(self.index, drawn_vertex.index, -diff)
                     if self.trust[drawn_vertex] <= 0:
                         self.trust.pop(drawn_vertex)
                     diff = 0
                 else:
                     diff -= self.trust[drawn_vertex]
                     self.trust.pop(drawn_vertex)
+                    oper.increment_trust(self.index, drawn_vertex.index, -self.trust[drawn_vertex])
 
                 if self.is_linked(drawn_vertex) and self.trust_in(drawn_vertex) < self.min_trust:
                     self.remove_link(drawn_vertex)
+                    oper.remove_link(self.index, drawn_vertex.index)
 
         self.load = min(self.capacity, new_load)
 

@@ -4,17 +4,19 @@ Implement the operation stack structure in order to save
 
 import pandas as pd
 import numpy as np
+import h5py
 
 class OperationStack:
 
-    def __init__(self, init_trust=None, init_link=None, stack_file=None):
+    def __init__(self, stack_dir=None):
         """If no `stack_file` is given return empty stack else load the stacks from the file
         if `init_trust` and `init_link` are given they must be np.ndarray
         """
         self.iter_number = 0
         self.read_pointer = 0
         self.read_interaction = 0
-
+        
+        self.activated = True
         # Defining stacks
         # Format:
         # Interaction number: the number of the interaction when the operation takes place
@@ -30,53 +32,77 @@ class OperationStack:
             "Value": [] 
         }
 
-        if stack_file is not None:
-            self.load_stack_from_file(stack_file)
-
         # Init matrices
-        self.trust = init_trust
-        self.link = init_link
+        self.trust = None
+        self.link = None
+
+        if stack_dir is not None:
+            self.load_stack_from_dir(stack_dir)
 
     def add_link(self, i, j):
         """Add operation corresponding to adding a link to the stack"""
-        self.stacks["Interaction number"].append(self.iter_number)
-        self.stacks["Operation name"].append("Link")
-        self.stacks["i"].append(i)
-        self.stacks["j"].append(j)
-        self.stacks["Value"].append(1)
+        if self.activated:
+            self.stacks["Interaction number"].append(self.iter_number)
+            self.stacks["Operation name"].append("Link")
+            self.stacks["i"].append(i)
+            self.stacks["j"].append(j)
+            self.stacks["Value"].append(1)
 
     def remove_link(self, i, j):
         """Add operation corresponding to removing a link to the stack"""
-        self.stacks["Interaction number"].append(self.iter_number)
-        self.stacks["Operation name"].append("Link")
-        self.stacks["i"].append(i)
-        self.stacks["j"].append(j)
-        self.stacks["Value"].append(-1)
+        if self.activated:
+            self.stacks["Interaction number"].append(self.iter_number)
+            self.stacks["Operation name"].append("Link")
+            self.stacks["i"].append(i)
+            self.stacks["j"].append(j)
+            self.stacks["Value"].append(-1)
 
     def increment_trust(self, i, j, increment):
         """Add operation corresponding to a trust value update"""
-        self.stacks["Interaction number"].append(self.iter_number)
-        self.stacks["Operation name"].append("Trust")
-        self.stacks["i"].append(i)
-        self.stacks["j"].append(j)
-        self.stacks["Value"].append(increment)
+        if self.activated:
+            self.stacks["Interaction number"].append(self.iter_number)
+            self.stacks["Operation name"].append("Trust")
+            self.stacks["i"].append(i)
+            self.stacks["j"].append(j)
+            self.stacks["Value"].append(increment)
 
     def next_iter(self):
         """Notify the stack the interaction is not the same as before"""
-        self.iter_number += 1
+        if self.activated:
+            self.iter_number += 1
 
-    def save(self, save_file):
-        """Save the stack in a file"""        
+    def save(self, dir_path):
+        """Save the stack in a folder"""        
         df = pd.DataFrame(self.stacks)
-        df.to_csv(save_file, index=False)
+        df.to_csv(dir_path + "stack.csv", index=False)
 
-    def load_stack_from_file(self, stack_file):
+        if self.trust is not None and self.link is not None:
+            f = h5py.File(dir_path + "init.h5", 'w')
+            f["Trust"] = self.trust
+            f["Link"] = self.link
+
+    def load_stack_from_dir(self, dir_path):
         """Set all the stack according to the csv `stack_file`
         Warning: overwrites all existing values
         """
-        df = pd.read_csv(stack_file)
+        df = pd.read_csv(dir_path + "stack.csv")
         self.stacks = df.to_dict('list')
+        self.set_matrices_from_file(dir_path + "init.h5")
         self.iter_number = self.stacks["Interaction number"][-1]
+    
+    def set_matrices_from_file(self, filepath):
+        """set the link and trust adjacency matrices stored in the hdf5 file with path `filepath`"""
+        f = h5py.File(filepath, 'r')
+        self.link = np.array(f.get("Link"), dtype=int)
+        self.trust = np.array(f.get("Trust"))
+
+    def set_link_from_array(self, link_array):
+        """set the link adjacency matrix"""
+        self.link = link_array
+
+    def set_trust_from_array(self, trust_array):
+        """set the trust adjacency matrix"""
+        self.trust = trust_array
     
     def resolve_one(self):
         """Read all operation during an interaction and update matrices"""
@@ -97,7 +123,7 @@ class OperationStack:
             
             self.read_pointer += 1
 
-        self.read_interaction += 1 # This work because at each interaction an operation occurs but not safe in theory
+        self.read_interaction += 1
         return self.trust, self.link
 
     def amend_one(self):

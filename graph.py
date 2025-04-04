@@ -242,6 +242,7 @@ class Vertex:
         self.trust[end] = trust
         if trust >= self.min_trust:
             self.create_link(end)
+        self.load += trust
 
     def choose(self, other, game_matrix, temperature):
         """Return the choice of the person in the dyadic game based on temperature and phenotype

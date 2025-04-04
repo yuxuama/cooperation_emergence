@@ -61,7 +61,7 @@ class OperationStack:
         self.stacks["j"].append(j)
         self.stacks["Value"].append(increment)
 
-    def increment_iter_number(self):
+    def next_iter(self):
         """Notify the stack the interaction is not the same as before"""
         self.iter_number += 1
 
@@ -81,53 +81,62 @@ class OperationStack:
     def resolve_one(self):
         """Read all operation during an interaction and update matrices"""
         assert self.link is not None and self.trust is not None
+        assert self.read_interaction <= self.iter_number
         iter_stack = self.stacks["Interaction number"]
 
-        while iter_stack[self.read_pointer] == self.read_interaction:
+        while self.read_pointer < len(iter_stack) and iter_stack[self.read_pointer] == self.read_interaction:
             name = self.stacks["Operation name"][self.read_pointer]
             i = self.stacks["i"][self.read_pointer]
             j = self.stacks["j"][self.read_pointer]
-            value = self.stacks["value"][self.read_pointer]
+            value = self.stacks["Value"][self.read_pointer]
             
             if name == "Link":
-                self.link[i, j] = value
+                self.link[i, j] += value
             elif name == "Trust":
-                self.trust[i, j] = value
+                self.trust[i, j] += value
             
             self.read_pointer += 1
 
         self.read_interaction += 1 # This work because at each interaction an operation occurs but not safe in theory
+        return self.trust, self.link
 
     def amend_one(self):
         """Amend all operation during of the current interaction and update matrices"""
         assert self.link is not None and self.trust is not None
+        assert self.read_interaction > 0
         iter_stack = self.stacks["Interaction number"]
         self.read_pointer -= 1
         self.read_interaction -= 1
-        while iter_stack[self.read_pointer] == self.read_interaction:
+        while self.read_pointer > -1 and iter_stack[self.read_pointer] == self.read_interaction:
             name = self.stacks["Operation name"][self.read_pointer]
             i = self.stacks["i"][self.read_pointer]
             j = self.stacks["j"][self.read_pointer]
-            value = self.stacks["value"][self.read_pointer]
+            value = self.stacks["Value"][self.read_pointer]
             
             if name == "Link":
-                self.link[i, j] = -value
+                self.link[i, j] -= value
             elif name == "Trust":
-                self.trust[i, j] = -value
+                self.trust[i, j] -= value
             
             self.read_pointer -= 1
 
         self.read_pointer += 1
+        return self.trust, self.link
     
     def resolve(self, inter_number):
         """Return the state of trust and link in this order at the `inter_number`-th interaction
-        Note that `inter_number` must be strictly positive (natural counting for humans)"""
+        Note that `inter_number` must be strictly positive (natural counting for humans). A special case
+        is added with -1 which gives the final states."""
+        if inter_number > self.iter_number+1:
+            raise "More interaction requested than simulated"
+        if inter_number == -1:
+            inter_number = self.iter_number+1
 
         if inter_number >= self.read_interaction:
             for _ in range(inter_number - self.read_interaction):
                 self.resolve_one()
         else:
-            for _ in range(self.iter_number - inter_number):
+            for _ in range(self.read_interaction - inter_number):
                 self.amend_one()
         
         return self.trust, self.link

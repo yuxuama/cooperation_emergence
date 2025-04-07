@@ -70,8 +70,23 @@ def create_social_group(size, assignation, adjacency_matrix, min_trust):
             if j != i:
                 adjacency_matrix[real_sample[i], real_sample[j]] = min_trust
 
+def plot(layout, ax, i, j, data, bins, title, log):
+    """Auxiliary function used in histogram"""
+    if layout[0] > 1:
+        if log:
+            ax[i, j].plot(np.log(data), '+')
+        else:
+            ax[i, j].hist(bins, bins=bins, weights=data)
+        ax[i, j].set_title(title)
+    else:
+        if log:
+            ax[j].plot(np.log(data), '+')
+        else:
+            ax[j].hist(bins, bins=bins, weights=data)
+        ax[j].set_title(title)
 
-def histogram(trust_adjacency_matrix, parameters):
+
+def histogram(trust_adjacency_matrix, parameters, log=False):
     """Return histogram of the weight distribution for each phenotype and the average distribution in log scale"""
     fig_layout = [(1, 2), (1, 3), (2, 3), (2, 3), (2, 3)]
 
@@ -83,18 +98,27 @@ def histogram(trust_adjacency_matrix, parameters):
 
     # Generating each histogram
     phenotype_mean = {}
+    phenotype_count = {}
 
     mean = np.zeros(maxi+1, dtype=float)
     bins = np.arange(maxi+1)
 
     for i in range(size):
         data = trust_adjacency_matrix[i]
-        n, _ = np.histogram(data, bins=int(np.max(data)))
+        n, _ = np.histogram(data, bins=int(np.max(data)+1), density=False)
         ph = phenotype_table[i]
-        phenotype_mean[ph] = np.zeros(maxi+1, dtype=float)
+        if not ph in phenotype_mean:
+            phenotype_mean[ph] = np.zeros(maxi+1, dtype=float)
+        if not ph in phenotype_count:
+            phenotype_count[ph] = 0
+        phenotype_count[ph] += 1
         for i in range(len(n)):
             phenotype_mean[ph][i] += n[i]
             mean[i] += n[i]
+    
+    for key in phenotype_mean.keys():
+        phenotype_mean[key] /= phenotype_count[key] 
+    
     mean /= size
     
     fig, ax = plt.subplots(layout[0], layout[1], sharex=True)
@@ -102,19 +126,9 @@ def histogram(trust_adjacency_matrix, parameters):
         for i in range(layout[0]):
             if layout[1]*i + j < len(possible_phenotype):
                 ph = possible_phenotype[3*i+j]
-                if layout[0] > 1:
-                    ax[i, j].hist(bins, bins=bins, weights=phenotype_mean[ph])
-                    ax[i, j].set_title(ph)
-                else:
-                    ax[j].hist(bins, bins=bins, weights=phenotype_mean[ph])
-                    ax[j].set_title(ph)
+                plot(layout, ax, i, j, phenotype_mean[ph], bins, ph, log)
             elif layout[1]*i + j == len(possible_phenotype):
-                if layout[0] > 1:
-                    ax[i, j].plot(np.log(mean), '+')
-                    ax[i, j].set_title("Average")
-                else:
-                    ax[j].plot(np.log(mean), '+')
-                    ax[j].set_title("Average")
+                plot(layout, ax, i, j, mean, bins, "Average", True)
             else:
                 if layout[0] > 1:
                     ax[i, j].remove()

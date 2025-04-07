@@ -106,6 +106,7 @@ def histogram(trust_adjacency_matrix, parameters, log=False):
     for i in range(size):
         data = trust_adjacency_matrix[i]
         n, _ = np.histogram(data, bins=int(np.max(data)+1), density=False)
+        n[0] -= 1 # Il faut enlever le fait que la personne n'a pas de lien avec elle-même
         ph = phenotype_table[i]
         if not ph in phenotype_mean:
             phenotype_mean[ph] = np.zeros(maxi+1, dtype=float)

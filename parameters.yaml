@@ -11,5 +11,9 @@ Temperature: 0
 
 # Valid phenotypes (with caps): Trustful, Random, Optimistic, Pessimist, Envious
 Strategy distributions:
-  Pessimist: 1
+  Envious: 0.3
+  Optimist: 0.2
+  Pessimist: 0.21
+  Random: 0.12
+  Trustful: 0.17
  

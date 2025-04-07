@@ -1,10 +1,13 @@
 # WAML document with parameters of the simulation
+# Simulation parameters
+Number of interaction: 100000
+Output directory: "./out/group_of_5/"
 
-Number of interaction: 10000
+# Model parameters
 Community size: 75
 Link minimum: 5
-Temperature: 0
 Cognitive capacity: 50
+Temperature: 0
 
 # Valid phenotypes (with caps): Trustful, Random, Optimistic, Pessimist, Envious
 Strategy distributions:

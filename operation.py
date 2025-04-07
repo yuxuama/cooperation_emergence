@@ -17,7 +17,7 @@ class OperationStack:
         self.read_pointer = 0
         self.read_interaction = 0
         
-        self.activated = True
+        self.activated = True # When True the operation stacks can be modified otherwise can only be read
         # Defining stacks
         # Format:
         # Interaction number: the number of the interaction when the operation takes place
@@ -168,3 +168,6 @@ class OperationStack:
                 self.amend_one()
         
         return self.trust, self.link
+
+    def __len__(self):
+        return self.iter_number

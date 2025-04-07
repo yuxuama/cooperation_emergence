@@ -9,7 +9,7 @@ from utils import save_parameters
 
 class Network:
 
-    def __init__(self, parameters, out_dir):
+    def __init__(self, parameters):
         # Properties definition
         self.parameters = parameters
         self.max_iter = parameters["Number of interaction"]
@@ -18,7 +18,7 @@ class Network:
         self.temp = parameters["Temperature"]
         self.cognitive_capa = parameters["Cognitive capacity"]
         self.strategy_distrib = parameters["Strategy distributions"]
-        self.out_dir = out_dir
+        self.out_dir = parameters["Output directory"]
 
         self.phenotypes = list(self.strategy_distrib.keys())
         self.distribution_grid = [0] # Used to initialized populations of each phenotypes according to parameters.
@@ -130,13 +130,14 @@ class Network:
     def play(self):
         """Run the simulation
         Return the OperationStack object which contains all the history of the simulation"""
-        self.oper.activated = True
+        self.oper.activated = True # Activate write mode of the OperationStack
         self.oper.set_link_from_array(self.get_adjacency_link_matrix())
         self.oper.set_trust_from_array(self.get_adjacency_trust_matrix())
         for _ in range(self.max_iter):
             self.interact()
             self.oper.next_iter()
         # Save
+        self.oper.activated = False # Deactivate write mode
         self.oper.save(self.out_dir)
         save_parameters(self.parameters, self.out_dir)
         return self.oper

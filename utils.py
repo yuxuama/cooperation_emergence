@@ -45,7 +45,7 @@ def get_vertex_distribution(parameters):
     
     return table
 
-def create_social_groupe(size, assignation, adjacency_matrix, min_trust):
+def create_social_group(size, assignation, adjacency_matrix, min_trust):
     """Create a fully connected graph of size `size` among an unassigned group of people
     Allow to create disconnected social group"""
     remaining = assignation.size - np.sum(assignation)
@@ -80,7 +80,6 @@ def histogram(trust_adjacency_matrix, parameters):
     phenotype_table = get_vertex_distribution(parameters)
     possible_phenotype = list(parameters["Strategy distributions"].keys())
     layout = fig_layout[len(possible_phenotype) - 1]
-    print(layout)
 
     # Generating each histogram
     phenotype_mean = {}
@@ -123,3 +122,16 @@ def histogram(trust_adjacency_matrix, parameters):
                     ax[j].remove()
     
     plt.show()
+
+def measure_link_asymmetry(link_adjacency_matric):
+    """Return the proportion of link that are asymmetrical"""
+    size = link_adjacency_matric.shape[0]
+    number_of_link = size * (size - 1) / 2
+    number_of_asymmetric_link = 0
+
+    for i in range(size):
+        for j in range(i+1, size):
+            if link_adjacency_matric[i, j] != link_adjacency_matric[j, i]:
+                number_of_asymmetric_link += 1
+    
+    return number_of_asymmetric_link / number_of_link

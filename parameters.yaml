@@ -1,12 +1,12 @@
 # WAML document with parameters of the simulation
 # Simulation parameters
-Number of interaction: 30000
-Output directory: "./out/empty_simple_poisson/"
+Number of interaction: 100000
+Output directory: "./out/empty_simple_poisson_capa/"
 
 # Model parameters
 Community size: 75
-Link minimum: 1000
-Cognitive capacity: 1000
+Link minimum: 5
+Cognitive capacity: 50
 Temperature: 0
 
 # Valid phenotypes (with caps): Trustful, Random, Optimistic, Pessimist, Envious

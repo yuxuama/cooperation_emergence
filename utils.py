@@ -151,7 +151,6 @@ def measure_link_asymmetry(link_adjacency_matric):
         for j in range(i+1, size):
             if link_adjacency_matric[i, j] != link_adjacency_matric[j, i]:
                 number_of_asymmetric_link += 1
-    
     return number_of_asymmetric_link / number_of_link
 
 def poisson(k, lamb):

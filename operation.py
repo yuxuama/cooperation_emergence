@@ -1,5 +1,5 @@
 """operation.py
-Implement the operation stack structure in order to save
+Implement the operation stack structure in order to save the network
 """
 
 import pandas as pd

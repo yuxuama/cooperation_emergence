@@ -19,10 +19,9 @@ def save_parameters(data, dir_path):
 def readable_adjacency(adjacency_matrix=np.ndarray):
     """Gives the adjacency matric in a form usalble in https://graphonline.top/en/create_graph_by_matrix"""
     n = adjacency_matrix.shape[0]
-    adj = adjacency_matrix.astype(int)
     for i in range(n):
         for j in range(n):
-            print(adj[i, j], end=", ")
+            print(adjacency_matrix[i, j], end=", ")
         print()
 
 def get_vertex_distribution(parameters):
@@ -141,17 +140,30 @@ def plot_histogram(phenotype_mean, mean, parameters, log=False):
     
     return fig, ax
 
-def measure_link_asymmetry(link_adjacency_matric):
+def measure_link_asymmetry(link_adjacency_matrix):
     """Return the proportion of link that are asymmetrical"""
-    size = link_adjacency_matric.shape[0]
+    size = link_adjacency_matrix.shape[0]
     number_of_link = size * (size - 1) / 2
     number_of_asymmetric_link = 0
 
     for i in range(size):
         for j in range(i+1, size):
-            if link_adjacency_matric[i, j] != link_adjacency_matric[j, i]:
+            if link_adjacency_matrix[i, j] != link_adjacency_matrix[j, i]:
                 number_of_asymmetric_link += 1
     return number_of_asymmetric_link / number_of_link
+
+def measure_saturation_rate(trust_adjacency_matrix, max_load):
+    """Return the proportion of edje that are saturated"""
+    count = 0
+    total = trust_adjacency_matrix.shape[0]
+
+    for i in range(total):
+        sumload = np.sum(trust_adjacency_matrix[i])
+        if sumload == max_load:
+            count += 1
+        print(sumload)
+
+    return count / total
 
 def poisson(k, lamb):
     return np.power(lamb, k) * np.exp(-lamb) / factorial(k)

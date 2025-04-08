@@ -17,8 +17,8 @@ if __name__ == '__main__':
     adjacency_matrix = np.zeros((size, size))
     assignation = np.zeros(size, dtype=bool)
 
-    #for _ in range(15):
-    #    create_social_group(5, assignation, adjacency_matrix, min_trust)
+    for _ in range(15):
+        create_social_group(5, assignation, adjacency_matrix, min_trust)
 
     net.set_adjacency_trust_matrix(adjacency_matrix)
     net.play()

@@ -223,8 +223,8 @@ class Vertex:
         
         new_load = self.load + increment
         if other in self.trust:
-            self.trust[other] += increment
             oper.increment_trust(self.index, other.index, max(-self.trust[other], increment))
+            self.trust[other] += increment
             if self.trust[other] <= 0:
                 self.trust.pop(other)
         elif increment > 0:
@@ -243,16 +243,14 @@ class Vertex:
                 draw = np.random.randint(len(self.trust))
                 drawn_vertex = list(self.trust.keys())[draw]
                 
-                if self.trust[drawn_vertex] >= diff:
+                if self.trust[drawn_vertex] > diff:
                     self.trust[drawn_vertex] -= diff
                     oper.increment_trust(self.index, drawn_vertex.index, -diff)
-                    if self.trust[drawn_vertex] <= 0:
-                        self.trust.pop(drawn_vertex)
                     diff = 0
                 else:
                     diff -= self.trust[drawn_vertex]
-                    self.trust.pop(drawn_vertex)
                     oper.increment_trust(self.index, drawn_vertex.index, -self.trust[drawn_vertex])
+                    self.trust.pop(drawn_vertex)
 
                 if self.is_linked(drawn_vertex) and self.trust_in(drawn_vertex) < self.min_trust:
                     self.remove_link(drawn_vertex)
@@ -310,7 +308,7 @@ class Trustful(Vertex):
         draw = np.random.rand()
         if draw > np.exp(- 1 / temperature):
             return strategic_response, happy_response
-        
+
         return 1 - strategic_response, np.random.randint(2)
 
 class Pessimist(Vertex):

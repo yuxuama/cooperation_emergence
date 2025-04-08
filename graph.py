@@ -4,6 +4,7 @@ Implement the mathematical graph structure of the network
 import numpy as np
 from operation import OperationStack
 from utils import save_parameters
+from tqdm import tqdm
   
 """Graph class for network structure"""
 
@@ -133,7 +134,7 @@ class Network:
         self.oper.activated = True # Activate write mode of the OperationStack
         self.oper.set_link_from_array(self.get_adjacency_link_matrix())
         self.oper.set_trust_from_array(self.get_adjacency_trust_matrix())
-        for _ in range(self.max_iter):
+        for _ in tqdm(range(self.max_iter)):
             self.interact()
             self.oper.next_iter()
         # Save

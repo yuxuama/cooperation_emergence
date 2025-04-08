@@ -86,15 +86,11 @@ def plot(layout, ax, i, j, data, bins, title, log):
         ax[j].set_title(title)
 
 
-def histogram(trust_adjacency_matrix, parameters, log=False):
+def histogram(trust_adjacency_matrix, parameters):
     """Return histogram of the weight distribution for each phenotype and the average distribution in log scale"""
-    fig_layout = [(1, 2), (1, 3), (2, 3), (2, 3), (2, 3)]
-
     size = parameters["Community size"]
     maxi = int(np.max(trust_adjacency_matrix))
     phenotype_table = get_vertex_distribution(parameters)
-    possible_phenotype = list(parameters["Strategy distributions"].keys())
-    layout = fig_layout[len(possible_phenotype) - 1]
 
     # Generating each histogram
     phenotype_mean = {}
@@ -121,7 +117,14 @@ def histogram(trust_adjacency_matrix, parameters, log=False):
         phenotype_mean[key] /= phenotype_count[key] 
     
     mean /= size
-    
+
+    return phenotype_mean, mean
+
+def plot_histogram(phenotype_mean, mean, parameters, log=False):
+    possible_phenotype = list(parameters["Strategy distributions"].keys())
+    bins = np.arange(mean.size)
+    fig_layout = [(1, 2), (1, 3), (2, 3), (2, 3), (2, 3)]
+    layout = fig_layout[len(possible_phenotype) - 1]
     fig, ax = plt.subplots(layout[0], layout[1], sharex=True)
     for j in range(layout[1]):
         for i in range(layout[0]):
@@ -136,7 +139,7 @@ def histogram(trust_adjacency_matrix, parameters, log=False):
                 else:
                     ax[j].remove()
     
-    plt.show()
+    return fig, ax
 
 def measure_link_asymmetry(link_adjacency_matric):
     """Return the proportion of link that are asymmetrical"""
@@ -150,3 +153,11 @@ def measure_link_asymmetry(link_adjacency_matric):
                 number_of_asymmetric_link += 1
     
     return number_of_asymmetric_link / number_of_link
+
+def poisson(k, lamb):
+    return np.power(lamb, k) * np.exp(-lamb) / factorial(k)
+
+def factorial(k):
+    if k == 0:
+        return 1
+    return k * factorial(k-1)

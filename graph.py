@@ -43,7 +43,17 @@ class Network:
         p = 0
         while index >= self.distribution_grid[p]:
             p += 1
-        self.vertices[index] = Vertex(self.phenotypes[p-1], index, self.parameters)
+        ph = self.phenotypes[p-1]
+        if ph == "Random":
+            self.vertices[index] = Random(index, self.parameters)
+        if ph == "Trustful":
+            self.vertices[index] = Trustful(index, self.parameters)
+        if ph == "Pessimist":
+            self.vertices[index] = Pessimist(index, self.parameters)
+        if ph == "Optimist":
+            self.vertices[index] = Optimist(index, self.parameters)
+        if ph == "Envious":
+            self.vertices[index] = Envious(index, self.parameters)
 
     def create_link(self, start, end):
         """Create a link between two vertices
@@ -117,6 +127,11 @@ class Network:
         
         choice1, happy1 = v1.choose(v2, game_matrix, self.temp)
         choice2, happy2 = v2.choose(v1, game_matrix, self.temp)
+
+        if happy1 is None:
+            happy1 = choice2
+        if happy2 is None:
+            happy2 = choice1
         
         if choice2 == happy1:
             v1.update_trust(v2, gain, self.oper)
@@ -256,66 +271,136 @@ class Vertex:
         if trust >= self.min_trust:
             self.create_link(end)
         self.load += trust
-
-    def choose(self, other, game_matrix, temperature):
-        """Return the choice of the person in the dyadic game based on temperature and phenotype
-        0 -> cooperates
-        1 -> defects
-        Input:
-        `other` vertex of the other interacting agent
-        `game_matrix` the matrix of the game
-        `temperature` the parameters of not following the predefined strategy
-        """ 
-        T = game_matrix[1, 0]
-        S = game_matrix[0, 1]
-
-        trust = self.trust_in(other)
-
-        strategic_response = 1
-        happy_response = None
-        if self.phenotype == "Envious":
-            if S - T >= 0:
-                strategic_response = 0
-            happy_response = 1 - strategic_response # Happy if gain more than the other
-        elif self.phenotype == "Pessimist":
-            if S > game_matrix[1, 1]:
-                strategic_response = 0 
-            if game_matrix[strategic_response, 0] > game_matrix[strategic_response, 1]:
-                happy_response = 0
-            else:
-                happy_response = 1 # Happy if gain more than expected with his play
-        elif self.phenotype == "Optimist":
-            if T < game_matrix[0, 0]:
-                strategic_response = 0
-            sum0 = game_matrix[strategic_response, 0] + game_matrix[0, strategic_response] # Total payoff of both agent if the other cooperates
-            sum1 = game_matrix[strategic_response, 1] + game_matrix[1, strategic_response] # Same but when the other defects
-            if sum0 > sum1:
-                happy_response = 0
-            else:
-                happy_response = 1 # Happy in case the sum of the game is maximum
-        elif self.phenotype == "Trustful":
-            strategic_response = 0
-            happy_response = 0 # Happy if the other is indeed trustful
-        elif self.phenotype == "Random":
-            strategic_response = np.random.randint(2)
-            happy_response = np.random.randint(2)
-        
-        if trust > self.min_trust:
-            strategic_response = 0
-            happy_response = 0
-
-        if temperature == 0:
-            return strategic_response, happy_response
-        
-        draw = np.random.rand()
-        if draw > np.exp(- 1 / temperature):
-            return strategic_response, happy_response
-
-        return 1 - strategic_response, np.random.randint(2)
-    
+            
     def __str__(self):
         """Allows to print vertex in a readable way"""
         return self.phenotype + " " + str(self.index)
 
     def __hash__(self):
         return self.index
+
+class Random(Vertex):
+
+    def __init__(self, index, parameters):
+        super().__init__("Random", index, parameters)
+        self.heuristic = parameters["Heuristic"]
+    
+    def choose(self, other, game_matrix, temperature):
+        """Return the choice of the agent according to the game"""
+        if self.heuristic == "Trust":
+            return np.random.randint(2), 0
+        elif self.heuristic == "Simple":
+            return np.random.randint(2), np.random.randint(2)
+        elif self.heuristic == "Complex":
+            return np.random.randint(2), np.random.randint(2)
+
+class Trustful(Vertex):
+
+    def __init__(self, index, parameters):
+        super().__init__("Trustful", index, parameters)
+        self.heuristic = parameters["Heuristic"]
+    
+    def choose(self, other, game_matrix, temperature):
+        """Return the choice of the agent according to the game"""
+        strategic_response = 0
+        happy_response = 0
+        # Temperature noise
+        if temperature == 0:
+            return strategic_response, happy_response
+        draw = np.random.rand()
+        if draw > np.exp(- 1 / temperature):
+            return strategic_response, happy_response
+        
+        return 1 - strategic_response, np.random.randint(2)
+
+class Pessimist(Vertex):
+
+    def __init__(self, index, parameters):
+        super().__init__("Pessimist", index, parameters)
+        self.heuristic = parameters["Heuristic"]
+    
+    def choose(self, other, game_matrix, temperature):
+        """Return the choice of the agent according to the game"""
+        strategic_response = 1
+        happy_response = None
+        if self.trust_in(other) > self.min_trust or game_matrix[0, 1] > game_matrix[1, 1]:
+            strategic_response = 0
+        if self.heuristic == "Trust":
+            happy_response = 0
+        elif happy_response == "Simple":
+            happy_response = None
+        elif happy_response == "Complex":
+            if game_matrix[strategic_response, 0] > game_matrix[strategic_response, 1]:
+                happy_response = 0
+            else:
+                happy_response = 1 # Happy if gain more than expected with his play
+
+        # Temperature noise
+        if temperature == 0:
+            return strategic_response, happy_response
+        draw = np.random.rand()
+        if draw > np.exp(- 1 / temperature):
+            return strategic_response, happy_response
+
+        return 1 - strategic_response, np.random.randint(2)
+
+class Optimist(Vertex):
+
+    def __init__(self, index, parameters):
+        super().__init__("Optimist", index, parameters)
+        self.heuristic = parameters["Heuristic"]
+    
+    def choose(self, other, game_matrix, temperature):
+        """Return the choice of the agent according to the game"""
+        strategic_response = 1
+        happy_response = None
+        if self.trust_in(other) > self.min_trust or game_matrix[0, 1] < game_matrix[0, 0]:
+            strategic_response = 0
+        if self.heuristic == "Trust":
+            happy_response = 0
+        elif happy_response == "Simple":
+            happy_response = 0
+        elif happy_response == "Complex":
+            sum0 = game_matrix[strategic_response, 0] + game_matrix[0, strategic_response] # Total payoff of both agent if the other cooperates
+            sum1 = game_matrix[strategic_response, 1] + game_matrix[1, strategic_response] # Same but when the other defects
+            if sum0 > sum1:
+                happy_response = 0
+            else:
+                happy_response = 1 # Happy in case the sum of the game is maximum
+
+        # Temperature noise
+        if temperature == 0:
+            return strategic_response, happy_response
+        draw = np.random.rand()
+        if draw > np.exp(- 1 / temperature):
+            return strategic_response, happy_response
+
+        return 1 - strategic_response, np.random.randint(2)
+
+class Envious(Vertex):
+
+    def __init__(self, index, parameters):
+        super().__init__("Envious", index, parameters)
+        self.heuristic = parameters["Heuristic"]
+    
+    def choose(self, other, game_matrix, temperature):
+        """Return the choice of the agent according to the game"""
+        strategic_response = 1
+        happy_response = None
+        if self.trust_in(other) > self.min_trust or game_matrix[0, 1] >= game_matrix[1, 0]:
+            strategic_response = 0
+        if self.heuristic == "Trust":
+            happy_response = 0
+        elif happy_response == "Simple":
+            happy_response = 1 - strategic_response
+        elif happy_response == "Complex":
+            happy_response = 1 - strategic_response
+
+        # Temperature noise
+        if temperature == 0:
+            return strategic_response, happy_response
+        draw = np.random.rand()
+        if draw > np.exp(- 1 / temperature):
+            return strategic_response, happy_response
+
+        return 1 - strategic_response, np.random.randint(2)

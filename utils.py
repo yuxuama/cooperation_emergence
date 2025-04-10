@@ -69,59 +69,77 @@ def create_social_group(size, assignation, adjacency_matrix, min_trust):
             if j != i:
                 adjacency_matrix[real_sample[i], real_sample[j]] = min_trust
 
+def create_random_init(adjacency_matrix, cognitive_capa, min_link):
+    """Create a network with `n` random trust link"""
+    n = adjacency_matrix.shape[0]
+    for i in range(n):
+        for j in range(n):
+            s = np.sum(adjacency_matrix[i])
+            remain = cognitive_capa - s
+            if remain <= 0:
+                adjacency_matrix[i, j] = 0
+            else:
+                adjacency_matrix[i, j] = np.random.randint(0, min(5 * min_link, remain+1))
+              
 def plot(layout, ax, i, j, data, bins, title, log):
     """Auxiliary function used in histogram"""
+    n = np.arange(data.size)
     if layout[0] > 1:
         if log:
             ax[i, j].plot(np.log(data), '+')
         else:
-            ax[i, j].hist(bins, bins=bins, weights=data)
+            ax[i, j].hist(n, bins=bins, weights=data)
         ax[i, j].set_title(title)
     else:
         if log:
             ax[j].plot(np.log(data), '+')
         else:
-            ax[j].hist(bins, bins=bins, weights=data)
+            ax[j].hist(n, bins=bins, weights=data)
         ax[j].set_title(title)
 
+def plot_unique_hist(ax, data, bins=None):
+    n = np.arange(data.size)
+    if bins is None:
+        bins = np.arange(data.size + 1)
+    plot = ax.hist(n, bins=bins, weights=data)
+    return ax, plot
 
-def histogram(trust_adjacency_matrix, parameters):
+
+def histogram(trust_adjacency_matrix, parameters, bins=None):
     """Return histogram of the weight distribution for each phenotype and the average distribution in log scale"""
     size = parameters["Community size"]
-    maxi = int(np.max(trust_adjacency_matrix))
+    if bins is None:
+        maxi = int(np.ceil(np.max(trust_adjacency_matrix)))+1
+    else:
+        maxi = bins.size-1
     phenotype_table = get_vertex_distribution(parameters)
 
     # Generating each histogram
-    phenotype_mean = {}
-    phenotype_count = {}
-
-    mean = np.zeros(maxi+1, dtype=float)
-    bins = np.arange(maxi+1)
+    phenotype_mean = {"Global": np.zeros(maxi, dtype=float)}
+    phenotype_count = {"Global": size}
 
     for i in range(size):
         data = trust_adjacency_matrix[i]
-        n, _ = np.histogram(data, bins=int(np.max(data)+1), density=False)
+        n, _ = np.histogram(data, bins=np.arange(int(np.ceil(np.max(data)))+2), density=False)
         n[0] -= 1 # Il faut enlever le fait que la personne n'a pas de lien avec elle-même
         ph = phenotype_table[i]
         if not ph in phenotype_mean:
-            phenotype_mean[ph] = np.zeros(maxi+1, dtype=float)
+            phenotype_mean[ph] = np.zeros(maxi, dtype=float)
         if not ph in phenotype_count:
             phenotype_count[ph] = 0
         phenotype_count[ph] += 1
         for i in range(len(n)):
             phenotype_mean[ph][i] += n[i]
-            mean[i] += n[i]
+            phenotype_mean["Global"][i] += n[i]
     
     for key in phenotype_mean.keys():
         phenotype_mean[key] /= phenotype_count[key] 
-    
-    mean /= size
 
-    return phenotype_mean, mean
+    return phenotype_mean
 
-def plot_histogram(phenotype_mean, mean, parameters, log=False):
+def plot_histogram(phenotype_mean, parameters, log=False):
     possible_phenotype = list(parameters["Strategy distributions"].keys())
-    bins = np.arange(mean.size)
+    bins = np.arange(phenotype_mean["Global"].size+1)
     fig_layout = [(1, 2), (1, 3), (2, 3), (2, 3), (2, 3)]
     layout = fig_layout[len(possible_phenotype) - 1]
     fig, ax = plt.subplots(layout[0], layout[1], sharex=True)
@@ -131,7 +149,7 @@ def plot_histogram(phenotype_mean, mean, parameters, log=False):
                 ph = possible_phenotype[3*i+j]
                 plot(layout, ax, i, j, phenotype_mean[ph], bins, ph, log)
             elif layout[1]*i + j == len(possible_phenotype):
-                plot(layout, ax, i, j, mean, bins, "Average", True)
+                plot(layout, ax, i, j, phenotype_mean["Global"], bins, "log Average", True)
             else:
                 if layout[0] > 1:
                     ax[i, j].remove()
@@ -161,7 +179,6 @@ def measure_saturation_rate(trust_adjacency_matrix, max_load):
         sumload = np.sum(trust_adjacency_matrix[i])
         if sumload == max_load:
             count += 1
-        print(sumload)
 
     return count / total
 

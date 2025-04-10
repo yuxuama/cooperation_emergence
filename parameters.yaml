@@ -1,13 +1,13 @@
 # WAML document with parameters of the simulation
 # Simulation parameters
-Number of interaction: 200000
-Output directory: "./out/empty_trust_total_C750_Th10/"
+Number of interaction: 600000
+Output directory: "./out/random_simple_total_C750_Th10/"
 
 # Model parameters
-Community size: 75
+Community size: 80
 Link minimum: 10
 Cognitive capacity: 750
-Heuristic: "Trust" # Among "Simple", "Complex", "Trust"
+Heuristic: "Simple" # Among "Simple", "Complex", "Trust"
 Temperature: 0
 
 # Valid phenotypes (with caps): Trustful, Random, Optimistic, Pessimist, Envious

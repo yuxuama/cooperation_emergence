@@ -161,14 +161,33 @@ def plot_histogram(phenotype_mean, parameters, log=False):
 def measure_link_asymmetry(link_adjacency_matrix):
     """Return the proportion of link that are asymmetrical"""
     size = link_adjacency_matrix.shape[0]
-    number_of_link = size * (size - 1) / 2
+    number_of_link = 0
     number_of_asymmetric_link = 0
 
     for i in range(size):
         for j in range(i+1, size):
             if link_adjacency_matrix[i, j] != link_adjacency_matrix[j, i]:
                 number_of_asymmetric_link += 1
+                number_of_link += 1
+            elif link_adjacency_matrix[i, j] > 0:
+                number_of_link += 1
     return number_of_asymmetric_link / number_of_link
+
+def measure_individual_asummetry_rate(link_adjacency_matrix):
+    """Return the proportion of link that are asymmetrical per vertex"""
+    n = link_adjacency_matrix.shape[0]
+    number_of_link = np.sum(link_adjacency_matrix, axis=1)
+    number_of_asymmetric = np.zeros(n)
+
+    for i in range(n):
+        for j in range(i+1, n):
+            if link_adjacency_matrix[i, j] != link_adjacency_matrix[j, i]:
+                if link_adjacency_matrix[i, j] > 0:
+                    number_of_asymmetric[i] += 1
+                else:
+                    number_of_asymmetric[j] += 1
+    return number_of_asymmetric / number_of_link
+
 
 def measure_saturation_rate(trust_adjacency_matrix, max_load):
     """Return the proportion of edje that are saturated"""

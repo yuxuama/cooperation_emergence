@@ -293,11 +293,15 @@ class Random(Vertex):
             strategic_response, happy_response = np.random.randint(2), np.random.randint(2)
         elif self.heuristic == "Complex":
             strategic_response, happy_response = np.random.randint(2), np.random.randint(2)
+
+        if self.trust_in(other) > self.capacity:
+            strategic_response = 0
+            happy_response = 0
         
         if temperature == 0:
             return strategic_response, happy_response
         draw = np.random.rand()
-        if draw > np.exp(- 1 / temperature):
+        if draw < np.exp(- 1 / temperature):
             return strategic_response, happy_response
 
         return 1 - strategic_response, np.random.randint(2)
@@ -316,7 +320,7 @@ class Trustful(Vertex):
         if temperature == 0:
             return strategic_response, happy_response
         draw = np.random.rand()
-        if draw > np.exp(- 1 / temperature):
+        if draw < np.exp(- 1 / temperature):
             return strategic_response, happy_response
 
         return 1 - strategic_response, np.random.randint(2)
@@ -337,9 +341,9 @@ class Pessimist(Vertex):
             happy_response = 0
         elif self.heuristic == "Trust":
             happy_response = 0
-        elif happy_response == "Simple":
+        elif self.heuristic == "Simple":
             happy_response = None
-        elif happy_response == "Complex":
+        elif self.heuristic == "Complex":
             if game_matrix[strategic_response, 0] > game_matrix[strategic_response, 1]:
                 happy_response = 0
             else:
@@ -349,7 +353,7 @@ class Pessimist(Vertex):
         if temperature == 0:
             return strategic_response, happy_response
         draw = np.random.rand()
-        if draw > np.exp(- 1 / temperature):
+        if draw < np.exp(- 1 / temperature):
             return strategic_response, happy_response
 
         return 1 - strategic_response, np.random.randint(2)
@@ -370,9 +374,9 @@ class Optimist(Vertex):
             happy_response = 0
         elif self.heuristic == "Trust":
             happy_response = 0
-        elif happy_response == "Simple":
+        elif self.heuristic == "Simple":
             happy_response = 0
-        elif happy_response == "Complex":
+        elif self.heuristic == "Complex":
             sum0 = game_matrix[strategic_response, 0] + game_matrix[0, strategic_response] # Total payoff of both agent if the other cooperates
             sum1 = game_matrix[strategic_response, 1] + game_matrix[1, strategic_response] # Same but when the other defects
             if sum0 > sum1:
@@ -384,7 +388,7 @@ class Optimist(Vertex):
         if temperature == 0:
             return strategic_response, happy_response
         draw = np.random.rand()
-        if draw > np.exp(- 1 / temperature):
+        if draw < np.exp(- 1 / temperature):
             return strategic_response, happy_response
 
         return 1 - strategic_response, np.random.randint(2)
@@ -405,16 +409,16 @@ class Envious(Vertex):
             happy_response = 0
         elif self.heuristic == "Trust":
             happy_response = 0
-        elif happy_response == "Simple":
+        elif self.heuristic == "Simple":
             happy_response = 1 - strategic_response
-        elif happy_response == "Complex":
+        elif self.heuristic == "Complex":
             happy_response = 1 - strategic_response
 
         # Temperature noise
         if temperature == 0:
             return strategic_response, happy_response
         draw = np.random.rand()
-        if draw > np.exp(- 1 / temperature):
+        if draw < np.exp(- 1 / temperature):
             return strategic_response, happy_response
 
         return 1 - strategic_response, np.random.randint(2)

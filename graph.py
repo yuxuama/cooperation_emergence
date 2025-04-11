@@ -285,12 +285,22 @@ class Random(Vertex):
     
     def choose(self, other, game_matrix, temperature):
         """Return the choice of the agent according to the game"""
+        strategic_response = 1
+        happy_response = None
         if self.heuristic == "Trust":
-            return np.random.randint(2), 0
+            strategic_response, happy_response = np.random.randint(2), 0
         elif self.heuristic == "Simple":
-            return np.random.randint(2), np.random.randint(2)
+            strategic_response, happy_response = np.random.randint(2), np.random.randint(2)
         elif self.heuristic == "Complex":
-            return np.random.randint(2), np.random.randint(2)
+            strategic_response, happy_response = np.random.randint(2), np.random.randint(2)
+        
+        if temperature == 0:
+            return strategic_response, happy_response
+        draw = np.random.rand()
+        if draw > np.exp(- 1 / temperature):
+            return strategic_response, happy_response
+
+        return 1 - strategic_response, np.random.randint(2)
 
 class Trustful(Vertex):
 
@@ -323,7 +333,9 @@ class Pessimist(Vertex):
         happy_response = None
         if self.trust_in(other) > self.min_trust or game_matrix[0, 1] > game_matrix[1, 1]:
             strategic_response = 0
-        if self.heuristic == "Trust":
+        if self.trust_in(other) > self.min_trust:
+            happy_response = 0
+        elif self.heuristic == "Trust":
             happy_response = 0
         elif happy_response == "Simple":
             happy_response = None
@@ -354,7 +366,9 @@ class Optimist(Vertex):
         happy_response = None
         if self.trust_in(other) > self.min_trust or game_matrix[0, 1] < game_matrix[0, 0]:
             strategic_response = 0
-        if self.heuristic == "Trust":
+        if self.trust_in(other) > self.min_trust:
+            happy_response = 0
+        elif self.heuristic == "Trust":
             happy_response = 0
         elif happy_response == "Simple":
             happy_response = 0
@@ -387,7 +401,9 @@ class Envious(Vertex):
         happy_response = None
         if self.trust_in(other) > self.min_trust or game_matrix[0, 1] >= game_matrix[1, 0]:
             strategic_response = 0
-        if self.heuristic == "Trust":
+        if self.trust_in(other) > self.min_trust:
+            happy_response = 0
+        elif self.heuristic == "Trust":
             happy_response = 0
         elif happy_response == "Simple":
             happy_response = 1 - strategic_response

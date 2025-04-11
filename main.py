@@ -21,7 +21,7 @@ if __name__ == '__main__':
     #for _ in range(2):
     #    create_social_group(40, assignation, adjacency_matrix, min_trust)
 
-    create_random_init(adjacency_matrix, cog_capa, min_trust)
+    #create_random_init(adjacency_matrix, cog_capa, min_trust)
 
     net.set_adjacency_trust_matrix(adjacency_matrix)
     net.play()

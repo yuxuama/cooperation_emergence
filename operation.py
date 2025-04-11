@@ -170,4 +170,4 @@ class OperationStack:
         return self.trust, self.link
 
     def __len__(self):
-        return self.iter_number
+        return self.iter_number + 1

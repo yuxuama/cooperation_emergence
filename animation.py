@@ -4,7 +4,7 @@ Animate histogram in order to catch the dynamic of the network
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from utils import histogram
+from analysis import histogram
 import numpy as np
 import os
 

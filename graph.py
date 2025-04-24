@@ -3,7 +3,7 @@ Implement the mathematical graph structure of the network
 """
 import numpy as np
 from operation import OperationStack
-from utils import save_parameters
+from utils import save_parameters, print_parameters
 from tqdm import tqdm
   
 """Graph class for network structure"""
@@ -146,6 +146,8 @@ class Network:
     def play(self):
         """Run the simulation
         Return the OperationStack object which contains all the history of the simulation"""
+        print_parameters(self.parameters)
+        
         self.oper.activated = True # Activate write mode of the OperationStack
         self.oper.set_link_from_array(self.get_adjacency_link_matrix())
         self.oper.set_trust_from_array(self.get_adjacency_trust_matrix())
@@ -301,7 +303,7 @@ class Random(Vertex):
         if temperature == 0:
             return strategic_response, happy_response
         draw = np.random.rand()
-        if draw < np.exp(- 1 / temperature):
+        if draw > np.exp(- 1 / temperature):
             return strategic_response, happy_response
 
         return 1 - strategic_response, np.random.randint(2)
@@ -320,7 +322,7 @@ class Trustful(Vertex):
         if temperature == 0:
             return strategic_response, happy_response
         draw = np.random.rand()
-        if draw < np.exp(- 1 / temperature):
+        if draw > np.exp(- 1 / temperature):
             return strategic_response, happy_response
 
         return 1 - strategic_response, np.random.randint(2)
@@ -353,7 +355,7 @@ class Pessimist(Vertex):
         if temperature == 0:
             return strategic_response, happy_response
         draw = np.random.rand()
-        if draw < np.exp(- 1 / temperature):
+        if draw > np.exp(- 1 / temperature):
             return strategic_response, happy_response
 
         return 1 - strategic_response, np.random.randint(2)
@@ -388,7 +390,7 @@ class Optimist(Vertex):
         if temperature == 0:
             return strategic_response, happy_response
         draw = np.random.rand()
-        if draw < np.exp(- 1 / temperature):
+        if draw > np.exp(- 1 / temperature):
             return strategic_response, happy_response
 
         return 1 - strategic_response, np.random.randint(2)
@@ -418,7 +420,7 @@ class Envious(Vertex):
         if temperature == 0:
             return strategic_response, happy_response
         draw = np.random.rand()
-        if draw < np.exp(- 1 / temperature):
+        if draw > np.exp(- 1 / temperature):
             return strategic_response, happy_response
 
         return 1 - strategic_response, np.random.randint(2)

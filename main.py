@@ -18,8 +18,8 @@ if __name__ == '__main__':
     adjacency_matrix = np.zeros((size, size))
     assignation = np.zeros(size, dtype=bool)
 
-    #for _ in range(2):
-    #    create_social_group(40, assignation, adjacency_matrix, min_trust)
+    #for _ in range(5):
+    #    create_social_group(13, assignation, adjacency_matrix, min_trust)
 
     #create_random_init(adjacency_matrix, cog_capa, min_trust)
 

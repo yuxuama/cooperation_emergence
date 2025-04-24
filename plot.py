@@ -7,30 +7,30 @@ import numpy as np
 import matplotlib.pyplot as plt
 from analysis import measure_saturation_rate, measure_link_asymmetry
 
-def plot(layout, ax, i, j, data, bins, title, log):
+def plot(layout, ax, i, j, data, bins, title, log, **kwargs):
     """Auxiliary function used in histogram"""
     n = np.arange(data.size)
     if layout[0] > 1:
         if log:
-            ax[i, j].plot(np.log(data), '+')
+            ax[i, j].plot(np.log(data), '+', **kwargs)
         else:
-            ax[i, j].hist(n, bins=bins, weights=data)
+            ax[i, j].hist(n, bins=bins, weights=data, **kwargs)
         ax[i, j].set_title(title)
     else:
         if log:
-            ax[j].plot(np.log(data), '+')
+            ax[j].plot(np.log(data), '+', **kwargs)
         else:
-            ax[j].hist(n, bins=bins, weights=data)
+            ax[j].hist(n, bins=bins, weights=data, **kwargs)
         ax[j].set_title(title)
 
-def plot_unique_hist(ax, data, bins=None):
+def plot_unique_hist(ax, data, bins=None, **kwargs):
     n = np.arange(data.size)
     if bins is None:
         bins = np.arange(data.size + 1)
-    plot = ax.hist(n, bins=bins, weights=data)
+    plot = ax.hist(n, bins=bins, weights=data, **kwargs)
     return ax, plot
 
-def plot_histogram(phenotype_mean, parameters, log=False):
+def plot_histogram(phenotype_mean, parameters, log=False, **kwargs):
     possible_phenotype = list(parameters["Strategy distributions"].keys())
     bins = np.arange(phenotype_mean["Global"].size+1)
     fig_layout = [(1, 2), (1, 3), (2, 3), (2, 3), (2, 3)]
@@ -40,9 +40,9 @@ def plot_histogram(phenotype_mean, parameters, log=False):
         for i in range(layout[0]):
             if layout[1]*i + j < len(possible_phenotype):
                 ph = possible_phenotype[3*i+j]
-                plot(layout, ax, i, j, phenotype_mean[ph], bins, ph, log)
+                plot(layout, ax, i, j, phenotype_mean[ph], bins, ph, log, **kwargs)
             elif layout[1]*i + j == len(possible_phenotype):
-                plot(layout, ax, i, j, phenotype_mean["Global"], bins, "log Average", True)
+                plot(layout, ax, i, j, phenotype_mean["Global"], bins, "log Average", True, **kwargs)
             else:
                 if layout[0] > 1:
                     ax[i, j].remove()

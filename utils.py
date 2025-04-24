@@ -18,6 +18,11 @@ def save_parameters(data, dir_path):
     stream = open(dir_path + "parameters.yaml", 'w')
     dump(data, stream=stream,default_flow_style=False)
 
+def print_parameters(parameters):
+    """Print the parameters extracted from a yaml file"""
+    for key, values in parameters.items():
+        print("..", key, ": ", values)
+
 def readable_adjacency(adjacency_matrix=np.ndarray):
     """Gives the adjacency matric in a form usalble in https://graphonline.top/en/create_graph_by_matrix"""
     n = adjacency_matrix.shape[0]
@@ -83,5 +88,5 @@ def create_random_init(adjacency_matrix, cognitive_capa, min_link):
             if remain <= 0:
                 adjacency_matrix[i, j] = 0
             else:
-                adjacency_matrix[i, j] = np.random.randint(0, min(5 * min_link, remain+1))
+                adjacency_matrix[i, j] = np.random.randint(0, min(2 * min_link, remain+1))
 

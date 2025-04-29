@@ -5,6 +5,7 @@ File where tools for analysing simulation are defined
 
 import numpy as np
 from utils import get_vertex_distribution
+from tqdm import tqdm
 
 
 def histogram(trust_adjacency_matrix, parameters, bins=None):
@@ -40,7 +41,7 @@ def histogram(trust_adjacency_matrix, parameters, bins=None):
     return phenotype_mean
 
 def measure_link_asymmetry(link_adjacency_matrix):
-    """Return the proportion of link that are asymmetrical"""
+    """Return the proportion of link that are asymmetrical globally"""
     size = link_adjacency_matrix.shape[0]
     number_of_link = 0
     number_of_asymmetric_link = 0
@@ -57,7 +58,7 @@ def measure_link_asymmetry(link_adjacency_matrix):
     else:
         return number_of_asymmetric_link / number_of_link
 
-def measure_individual_asummetry_rate(link_adjacency_matrix):
+def measure_individual_asymmetry(link_adjacency_matrix):
     """Return the proportion of link that are asymmetrical per vertex"""
     n = link_adjacency_matrix.shape[0]
     number_of_link = np.sum(link_adjacency_matrix, axis=1)
@@ -75,8 +76,18 @@ def measure_individual_asummetry_rate(link_adjacency_matrix):
             number_of_asymmetric[i] = 0
         else:
             number_of_asymmetric[i] /= number_of_link[i]
-    return number_of_asymmetric
+    return np.median(number_of_asymmetric)
 
+def measure_random_individual_asymmetry(link_adjacency_matrix, niter, mode="i&&o", mc_iter=1000):
+    """Return the median asymmetry rate of a randomized network"""
+
+    rates = np.zeros(niter)
+
+    for i in tqdm(range(niter)):
+        randomized_network = randomized(link_adjacency_matrix, mode=mode, mc_iter=mc_iter)
+        rates[i] = measure_individual_asymmetry(randomized_network)
+    
+    return np.median(rates)
 
 def measure_saturation_rate(trust_adjacency_matrix, max_load):
     """Return the proportion of edje that are saturated"""
@@ -90,6 +101,93 @@ def measure_saturation_rate(trust_adjacency_matrix, max_load):
 
     return count / total
 
+def randomized(link_adjacency_matrix, mode, mc_iter=10):
+    """Return a randomised version of the network respecting certain conditions regarding the mode chose:
+    Modes:
+    - `'i'`: "in" respect the in degree of each node
+    - `'o'`: "out" respect the out degree of each node
+    - `i&&o`: "in" and "out" respect the composite degree (both in and out degrees)"""
+    n = link_adjacency_matrix.shape[0]
+    in_degree = np.sum(link_adjacency_matrix, axis=0)
+    out_degree = np.sum(link_adjacency_matrix, axis=1)
+    new_link_adjacency = np.zeros(link_adjacency_matrix.shape)
+
+    if mode == "i&&o":
+        return monte_carlo_randomisation(mc_iter, link_adjacency_matrix)
+    
+    for i in range(n):
+        if mode == "i":
+            draw = np.random.choice(n-1, in_degree[i], replace=False)
+            for j in draw:
+                if j < i:
+                    new_link_adjacency[j, i] = 1
+                else:
+                    new_link_adjacency[j+1, i] = 1
+        elif mode == "o":
+            draw = np.random.choice(n-1, out_degree[i], replace=False)
+            for j in draw:
+                if j < i:
+                    new_link_adjacency[i, j] = 1
+                else:
+                    new_link_adjacency[i, j+1] = 1
+    
+    return new_link_adjacency
+    
+
+def monte_carlo_randomisation(niter, link_adjacency):
+    """Randomise the network preserving both in and out degree"""
+    new_link_adjacency = link_adjacency.copy()
+    
+    for i in range(niter):
+
+        swappable_link = compute_swappable_links(new_link_adjacency)
+        if len(swappable_link) == 0:
+            print("ERROR: no more swappable link")
+            print("Breaking loop at iteration: ", i)
+            break
+
+        draw = np.random.randint(len(swappable_link))
+        links = swappable_link[draw]
+        new_link_adjacency[links[0], links[1]] = 0
+        new_link_adjacency[links[2], links[3]] = 0
+        temp = links[0]
+        links[0] = links[2]
+        links[2] = temp 
+        new_link_adjacency[links[0], links[1]] += 1 
+        new_link_adjacency[links[2], links[3]] += 1 
+    
+    return new_link_adjacency
+
+def compute_swappable_links(link_adjacency):
+    """Return all possible swappable link of the matrix conserving its structure"""
+    n = link_adjacency.shape[0]
+    swappable_link = []
+    new_link_adjacency = link_adjacency.copy()
+    indexes = np.arange(n)
+    for i in range(n):
+        for j in range(i+1, n):
+            if new_link_adjacency[i, j] > 0:
+                c_selector = new_link_adjacency[i] < 1
+                l_selector = new_link_adjacency[::,j] < 1
+                for k in range(i+1):
+                    l_selector[k] = False
+                c_selector[i] = False
+                l_selector[j] = False
+                l_filtered_indexes = indexes[l_selector]
+                c_filtered_indexes = indexes[c_selector]
+                
+                selector_shape = (np.sum(l_selector), np.sum(c_selector))
+                if selector_shape[0] == 0 or selector_shape[1] == 0:
+                    continue
+                matrix_selector = np.outer(l_selector, c_selector)
+                filtered_adjacency = new_link_adjacency[matrix_selector].reshape((selector_shape[0], selector_shape[1]))
+                for k in range(selector_shape[0]):
+                    for l in range(selector_shape[1]):
+                        if filtered_adjacency[k, l] > 0:
+                            swappable_link.append([i, j, l_filtered_indexes[k], c_filtered_indexes[l]])
+
+    return swappable_link
+
 def poisson(k, lamb):
     return np.power(lamb, k) * np.exp(-lamb) / factorial(k)
 
@@ -97,4 +195,16 @@ def factorial(k):
     if k == 0:
         return 1
     return k * factorial(k-1)
+
+if __name__ == "__main__":
+    test = np.random.randint(2, size=36).reshape((6, 6))
+    for i in range(test.shape[0]):
+        test[i, i] = 0
+    in_degrees = np.sum(test, axis=0)
+    out_degrees = np.sum(test, axis=1)
+    print(test)
+    net_rand = randomized(test, "i&&o", mc_iter=100)
+    print(net_rand)
+    print(in_degrees == np.sum(net_rand, axis=0))
+    print(out_degrees == np.sum(net_rand, axis=1))
 

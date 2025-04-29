@@ -289,9 +289,9 @@ class Random(Vertex):
         """Return the choice of the agent according to the game"""
         strategic_response = 1
         happy_response = None
-        if self.heuristic == "Trust":
+        if self.heuristic == "RTH":
             strategic_response, happy_response = np.random.randint(2), 0
-        elif self.heuristic == "Simple":
+        elif self.heuristic == "SITH":
             strategic_response, happy_response = np.random.randint(2), np.random.randint(2)
         elif self.heuristic == "Complex":
             strategic_response, happy_response = np.random.randint(2), np.random.randint(2)
@@ -341,9 +341,9 @@ class Pessimist(Vertex):
             strategic_response = 0
         if self.trust_in(other) > self.min_trust:
             happy_response = 0
-        elif self.heuristic == "Trust":
+        elif self.heuristic == "RTH":
             happy_response = 0
-        elif self.heuristic == "Simple":
+        elif self.heuristic == "SITH":
             happy_response = None
         elif self.heuristic == "Complex":
             if game_matrix[strategic_response, 0] > game_matrix[strategic_response, 1]:
@@ -374,9 +374,9 @@ class Optimist(Vertex):
             strategic_response = 0
         if self.trust_in(other) > self.min_trust:
             happy_response = 0
-        elif self.heuristic == "Trust":
+        elif self.heuristic == "RTH":
             happy_response = 0
-        elif self.heuristic == "Simple":
+        elif self.heuristic == "SITH":
             happy_response = 0
         elif self.heuristic == "Complex":
             sum0 = game_matrix[strategic_response, 0] + game_matrix[0, strategic_response] # Total payoff of both agent if the other cooperates
@@ -409,9 +409,9 @@ class Envious(Vertex):
             strategic_response = 0
         if self.trust_in(other) > self.min_trust:
             happy_response = 0
-        elif self.heuristic == "Trust":
+        elif self.heuristic == "RTH":
             happy_response = 0
-        elif self.heuristic == "Simple":
+        elif self.heuristic == "SITH":
             happy_response = 1 - strategic_response
         elif self.heuristic == "Complex":
             happy_response = 1 - strategic_response

@@ -5,7 +5,7 @@ File where plot routines are defined
 
 import numpy as np
 import matplotlib.pyplot as plt
-from analysis import measure_saturation_rate, measure_link_asymmetry
+from analysis import measure_saturation_rate, measure_link_asymmetry, measure_individual_asymmetry, measure_random_individual_asymmetry
 
 def plot(layout, ax, i, j, data, bins, title, log, **kwargs):
     """Auxiliary function used in histogram"""
@@ -76,3 +76,21 @@ def plot_asymmetry_evolution(ax, oper, start, end, step, **kwargs):
     ax.plot(step * x, data, **kwargs)
     ax.set_xlabel("Interaction")
     ax.set_ylabel("Global asymmetry rate")
+
+def plot_individual_asymmetry_evolution(ax, oper, start, end, step, randomised=False, **kwargs):
+    x = np.arange(start//step, end//step)
+    data = np.zeros(end//step - start//step)
+    random_data = np.zeros(end//step - start//step)
+    _, l = oper.resolve(start)
+    last = start
+    for i in range(0, end//step - start//step):
+        data[i] = measure_individual_asymmetry(l)
+        if randomised:
+            random_data[i] = measure_random_individual_asymmetry(l, 250, mode="o")
+        last += step
+        _, l = oper.resolve(last)
+    ax.plot(step * x, data, **kwargs, label="Simulation")
+    if randomised:
+        ax.plot(step * x, random_data, "k--", label="Randomized")
+    ax.set_xlabel("Interaction")
+    ax.set_ylabel("Individual asymmetry rate")

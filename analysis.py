@@ -117,7 +117,7 @@ def randomized(link_adjacency_matrix, mode, mc_iter=10):
     
     for i in range(n):
         if mode == "i":
-            draw = np.random.choice(n-1, in_degree[i], replace=False)
+            draw = np.random.choice(n-1, in_degree[i], replace=False) # n-1 because a link with oneself is not allowed
             for j in draw:
                 if j < i:
                     new_link_adjacency[j, i] = 1
@@ -136,25 +136,48 @@ def randomized(link_adjacency_matrix, mode, mc_iter=10):
 
 def monte_carlo_randomisation(niter, link_adjacency):
     """Randomise the network preserving both in and out degree"""
-    new_link_adjacency = link_adjacency.copy()
-    
-    for i in range(niter):
 
-        swappable_link = compute_swappable_links(new_link_adjacency)
+    in_degrees = np.sum(link_adjacency, axis=0)
+    out_degrees = np.sum(link_adjacency, axis=1)
+
+    new_link_adjacency = link_adjacency.copy()
+    swappable_link = compute_swappable_links(new_link_adjacency)
+    
+    for it in range(niter):
+
+        print(new_link_adjacency)
+        print(swappable_link)
+
         if len(swappable_link) == 0:
             print("ERROR: no more swappable link")
-            print("Breaking loop at iteration: ", i)
+            print("Breaking loop at iteration: ", it)
             break
 
         draw = np.random.randint(len(swappable_link))
         links = swappable_link[draw]
+        print("Performing swap on:", links)
         new_link_adjacency[links[0], links[1]] = 0
         new_link_adjacency[links[2], links[3]] = 0
-        temp = links[0]
-        links[0] = links[2]
-        links[2] = temp 
-        new_link_adjacency[links[0], links[1]] += 1 
-        new_link_adjacency[links[2], links[3]] += 1 
+        new_link_adjacency[links[2], links[1]] += 1 
+        new_link_adjacency[links[0], links[3]] += 1
+
+        # Remove old edges
+        to_pop = []
+        for i in range(len(swappable_link)):
+            test_links = swappable_link[i]
+            if link_invalidate_link(test_links, links):
+                to_pop.append(i-len(to_pop)) # Because pop is len dependent
+        print("Pop list:", to_pop)
+        for i in to_pop:
+            print(swappable_link.pop(i))
+        
+        # Find new swappable
+        swappable_links_from_link(links[2], links[1], new_link_adjacency, swappable_link)
+        swappable_links_from_link(links[0], links[3], new_link_adjacency, swappable_link)
+
+        if np.sum(np.sum(new_link_adjacency, axis=0) != in_degrees) > 0 or np.sum(np.sum(new_link_adjacency, axis=1) != out_degrees) > 0:
+            print("Not longer degree preserving", it)
+            break
     
     return new_link_adjacency
 
@@ -188,6 +211,51 @@ def compute_swappable_links(link_adjacency):
 
     return swappable_link
 
+def swappable_links_from_link(i, j, link_adjacency, swappable_link):
+    """Return all the swappable link containing the link i -> j"""
+    n = link_adjacency.shape[0]
+    indexes = np.arange(n)
+    c_selector = link_adjacency[i] < 1
+    l_selector = link_adjacency[::,j] < 1
+    c_selector[i] = False
+    l_selector[j] = False
+    c_filtered_indexes = indexes[c_selector]
+    l_filtered_indexes = indexes[l_selector]
+    
+    selector_shape = (np.sum(l_selector), np.sum(c_selector))
+    if selector_shape[0] == 0 or selector_shape[1] == 0:
+        return
+    
+    matrix_selector = np.outer(l_selector, c_selector)
+    filtered_adjacency = link_adjacency[matrix_selector].reshape((selector_shape[0], selector_shape[1]))
+    for k in range(selector_shape[0]):
+        for l in range(selector_shape[1]):
+            if filtered_adjacency[k, l] > 0:
+                swappable_link.append([i, j, l_filtered_indexes[k], c_filtered_indexes[l]])
+
+def link_invalidate_link(test_links, links):
+    """Return True if one of the change of link `links` invalidates `test_links`"""
+    # Test for link that disappeared
+    if links[0] == test_links[0] and links[1] == test_links[1]:
+        return True
+    elif links[0] == test_links[2] and links[1] == test_links[3]:
+        return True
+    elif links[2] == test_links[0] and links[3] == test_links[1]:
+        return True
+    elif links[2] == test_links[2] and links[3] == test_links[3]:
+        return True
+    # test for invalid XSWAP in-out square
+    if links[2] == test_links[0] and links[1] == test_links[3]:
+        return True
+    elif links[2] == test_links[2] and links[1] == test_links[1]:
+        return True
+    if links[0] == test_links[0] and links[3] == test_links[3]:
+        return True
+    elif links[0] == test_links[2] and links[3] == test_links[1]:
+        return True
+
+    return False
+    
 def poisson(k, lamb):
     return np.power(lamb, k) * np.exp(-lamb) / factorial(k)
 
@@ -203,7 +271,7 @@ if __name__ == "__main__":
     in_degrees = np.sum(test, axis=0)
     out_degrees = np.sum(test, axis=1)
     print(test)
-    net_rand = randomized(test, "i&&o", mc_iter=100)
+    net_rand = randomized(test, "i&&o", mc_iter=1000)
     print(net_rand)
     print(in_degrees == np.sum(net_rand, axis=0))
     print(out_degrees == np.sum(net_rand, axis=1))

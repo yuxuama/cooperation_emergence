@@ -137,16 +137,10 @@ def randomized(link_adjacency_matrix, mode, mc_iter=10):
 def monte_carlo_randomisation(niter, link_adjacency):
     """Randomise the network preserving both in and out degree"""
 
-    in_degrees = np.sum(link_adjacency, axis=0)
-    out_degrees = np.sum(link_adjacency, axis=1)
-
     new_link_adjacency = link_adjacency.copy()
     swappable_link = compute_swappable_links(new_link_adjacency)
     
     for it in range(niter):
-
-        print(new_link_adjacency)
-        print(swappable_link)
 
         if len(swappable_link) == 0:
             print("ERROR: no more swappable link")
@@ -155,7 +149,6 @@ def monte_carlo_randomisation(niter, link_adjacency):
 
         draw = np.random.randint(len(swappable_link))
         links = swappable_link[draw]
-        print("Performing swap on:", links)
         new_link_adjacency[links[0], links[1]] = 0
         new_link_adjacency[links[2], links[3]] = 0
         new_link_adjacency[links[2], links[1]] += 1 
@@ -167,17 +160,12 @@ def monte_carlo_randomisation(niter, link_adjacency):
             test_links = swappable_link[i]
             if link_invalidate_link(test_links, links):
                 to_pop.append(i-len(to_pop)) # Because pop is len dependent
-        print("Pop list:", to_pop)
         for i in to_pop:
-            print(swappable_link.pop(i))
+            swappable_link.pop(i)
         
         # Find new swappable
         swappable_links_from_link(links[2], links[1], new_link_adjacency, swappable_link)
         swappable_links_from_link(links[0], links[3], new_link_adjacency, swappable_link)
-
-        if np.sum(np.sum(new_link_adjacency, axis=0) != in_degrees) > 0 or np.sum(np.sum(new_link_adjacency, axis=1) != out_degrees) > 0:
-            print("Not longer degree preserving", it)
-            break
     
     return new_link_adjacency
 

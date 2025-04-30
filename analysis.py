@@ -6,6 +6,7 @@ File where tools for analysing simulation are defined
 import numpy as np
 from utils import get_vertex_distribution
 from tqdm import tqdm
+from scipy.optimize import newton 
 
 
 def histogram(trust_adjacency_matrix, parameters, bins=None):
@@ -138,10 +139,71 @@ def measure_saturation_rate(trust_adjacency_matrix, parameters):
 
     return count / total
 
-def measure_number_of_link(link_adjacency_matric):
+def measure_number_of_link(link_adjacency_matrix):
     """Return the average and sigma of the distribution of number of out links per agent"""
-    number_out_links = np.sum(link_adjacency_matric, axis=1)
-    return np.mean(number_out_links), np.std(number_out_links, ddof=number_out_links.size - 1) 
+    number_out_links = np.sum(link_adjacency_matrix, axis=1)
+    return np.mean(number_out_links), np.std(number_out_links, ddof=number_out_links.size - 1)
+
+def estimate_etas_with_L(trust_adjacency_matrix, link_adjacency_matrix, parameters):
+    """Estimate the eta parameter as defined in https://doi.org/10.1038/s41598-022-06066-1"""
+    n = trust_adjacency_matrix.shape[0]
+    etas = np.zeros(n)
+
+    func_prime = lambda eta: (1/(eta**2)) - (np.exp(eta)/(np.exp(eta) -1)**2)
+
+    for i in range(n):
+        L = np.sum(link_adjacency_matrix[i])
+
+        selector = link_adjacency_matrix[i] > 0
+        trust_values = trust_adjacency_matrix[i][selector]
+        freq, bins = np.histogram(trust_values, bins=np.arange(np.min(trust_values), np.max(trust_values)+2))
+        print(bins)
+        L1 = np.sum(freq * (np.flip(bins[0:bins.size-1]) - parameters["Link minimum"])) / (np.max(trust_adjacency_matrix) - parameters["Link minimum"])
+
+        if L1/L > 1:
+            print("WARNING: value of ratio above 1... skipping")
+            continue
+        if L1/L < 0:
+            print("WARNING: value of ratio below 0... skipping")
+            continue
+
+        func = lambda eta: (np.exp(eta) / (np.exp(eta) - 1)) - (1/eta) - L1/L
+
+        etas[i] = newton(func, 0.5, func_prime)
+    
+    return etas
+
+def compute_xhi_ratio(i, trust_adjacency_matrix, link_adjacency_matrix, parameters):
+    """Compute the xhi ratio as defined in https://doi.org/10.1038/s41598-022-06066-1"""
+    
+    expectations = histogram(trust_adjacency_matrix, parameters)
+    expectations = expectations["Global"][parameters["Link minimum"]::]
+    L = np.sum(link_adjacency_matrix[i])
+    xhi = expectations / L
+    xhi = np.flip(xhi)
+    n = xhi.size
+    for i in range(1, n):
+        xhi[i] += xhi[i-1]
+    
+    xhi_prime = np.zeros(n)
+    for i in range(1, n-1):
+        xhi_prime[i] = (xhi[i+1] - xhi[i-1]) / 2
+    xhi_prime[0] = xhi[1] - xhi[0]
+    xhi_prime[n - 1] = xhi_prime[n - 1] - xhi_prime[n - 2]
+
+    return xhi_prime / xhi
+    
+def compute_xhi(i, trust_adjacency_matrix, link_adjacency_matrix, parameters):
+    """Compute the xhi as defined in https://doi.org/10.1038/s41598-022-06066-1"""
+    expectations = histogram(trust_adjacency_matrix, parameters)
+    expectations = expectations["Global"][parameters["Link minimum"]::]
+    L = np.sum(link_adjacency_matrix[i])
+    xhi = expectations / L
+    xhi = np.flip(xhi)
+    for i in range(1, len(xhi)):
+        xhi[i] += xhi[i-1]
+    
+    return xhi
 
 def compute_randomized(link_adjacency_matrix, mode, mc_iter=10):
     """Return a randomised version of the network respecting certain conditions regarding the mode chose:

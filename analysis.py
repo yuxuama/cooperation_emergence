@@ -40,7 +40,7 @@ def histogram(trust_adjacency_matrix, parameters, bins=None):
 
     return phenotype_mean
 
-def measure(quantity, trust_adjacency_matrix, link_adjacency_matrix, parameters, randomized=False, *rand_args):
+def measure(quantity, trust_adjacency_matrix, link_adjacency_matrix, parameters, random=False, **rand_kwargs):
     """Unified method for measurement
     WARNING: randomized only work for measures on **links**"""
 
@@ -65,12 +65,12 @@ def measure(quantity, trust_adjacency_matrix, link_adjacency_matrix, parameters,
 
     measure_tool = possible_quantities[quantity]
 
-    if randomized:
-        return randomizer(measure_tool["func"], *rand_args, *measure_tool["param"])
+    if random:
+        return randomizer(measure_tool["func"], *measure_tool["param"], **rand_kwargs)
     
     return measure_tool["func"](*measure_tool["param"])
     
-def randomizer(func, niter, mode, mc_iter, *fargs, **fkwargs):
+def randomizer(func, *fargs, niter=300, mode="i&&o", mc_iter=100, **fkwargs):
     """Randomizer decorator for measures"""
     data = np.zeros(niter)
     fargs = list(fargs)
@@ -83,12 +83,11 @@ def randomizer(func, niter, mode, mc_iter, *fargs, **fkwargs):
         embedder = tqdm
 
     for i in embedder(range(niter)):
-        randomized_initial = randomized(initial, mode=mode, mc_iter=mc_iter)
+        randomized_initial = compute_randomized(initial, mode=mode, mc_iter=mc_iter)
         data[i] = func(randomized_initial, *fargs, **fkwargs)
     
     return np.median(data)
 
-    
 def measure_link_asymmetry(link_adjacency_matrix):
     """Return the proportion of link that are asymmetrical globally"""
     size = link_adjacency_matrix.shape[0]
@@ -127,28 +126,14 @@ def measure_individual_asymmetry(link_adjacency_matrix):
             number_of_asymmetric[i] /= number_of_link[i]
     return np.median(number_of_asymmetric)
 
-def measure_random_individual_asymmetry(link_adjacency_matrix, niter, mode="i&&o", mc_iter=1000):
-    """Return the median asymmetry rate of a randomized network"""
-
-    rates = np.zeros(niter)
-    if mode == "i&&o":
-        for i in tqdm(range(niter)):
-            randomized_network = randomized(link_adjacency_matrix, mode=mode, mc_iter=mc_iter)
-            rates[i] = measure_individual_asymmetry(randomized_network)
-    else:
-        for i in range(niter):
-            randomized_network = randomized(link_adjacency_matrix, mode=mode, mc_iter=mc_iter)
-            rates[i] = measure_individual_asymmetry(randomized_network)
-    return np.median(rates)
-
-def measure_saturation_rate(trust_adjacency_matrix, max_load):
+def measure_saturation_rate(trust_adjacency_matrix, parameters):
     """Return the proportion of edje that are saturated"""
     count = 0
     total = trust_adjacency_matrix.shape[0]
 
     for i in range(total):
         sumload = np.sum(trust_adjacency_matrix[i])
-        if sumload == max_load:
+        if sumload == parameters["Cognitive capacity"]:
             count += 1
 
     return count / total
@@ -158,7 +143,7 @@ def measure_number_of_link(link_adjacency_matric):
     number_out_links = np.sum(link_adjacency_matric, axis=1)
     return np.mean(number_out_links), np.std(number_out_links, ddof=number_out_links.size - 1) 
 
-def randomized(link_adjacency_matrix, mode, mc_iter=10):
+def compute_randomized(link_adjacency_matrix, mode, mc_iter=10):
     """Return a randomised version of the network respecting certain conditions regarding the mode chose:
     Modes:
     - `'i'`: "in" respect the in degree of each node
@@ -316,9 +301,9 @@ if __name__ == "__main__":
     in_degrees = np.sum(test, axis=0)
     out_degrees = np.sum(test, axis=1)
     print(test)
-    net_rand = randomized(test, "i&&o", mc_iter=1000)
+    net_rand = compute_randomized(test, "i&&o", mc_iter=1000)
     print(net_rand)
     print(in_degrees == np.sum(net_rand, axis=0))
     print(out_degrees == np.sum(net_rand, axis=1))
-    print(measure("Individual asymmetry", net_rand, net_rand, 0, True, 100, "i&&o", 10))
+    print(measure("Individual asymmetry", net_rand, net_rand, 0, niter=100, mode="i&&o", mc_iter=10))
 

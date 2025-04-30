@@ -5,9 +5,9 @@ File where plot routines are defined
 
 import numpy as np
 import matplotlib.pyplot as plt
-from analysis import measure_saturation_rate, measure_link_asymmetry, measure_individual_asymmetry, measure_random_individual_asymmetry
+from analysis import measure
 
-def plot(layout, ax, i, j, data, bins, title, log, **kwargs):
+def plot_sub(layout, ax, i, j, data, bins, title, log, **kwargs):
     """Auxiliary function used in histogram"""
     n = np.arange(data.size)
     if layout[0] > 1:
@@ -23,7 +23,7 @@ def plot(layout, ax, i, j, data, bins, title, log, **kwargs):
             ax[j].hist(n, bins=bins, weights=data, **kwargs)
         ax[j].set_title(title)
 
-def plot_unique_hist(ax, data, bins=None, **kwargs):
+def plot_one_histogram(ax, data, bins=None, **kwargs):
     n = np.arange(data.size)
     if bins is None:
         bins = np.arange(data.size + 1)
@@ -40,9 +40,9 @@ def plot_histogram(phenotype_mean, parameters, log=False, **kwargs):
         for i in range(layout[0]):
             if layout[1]*i + j < len(possible_phenotype):
                 ph = possible_phenotype[3*i+j]
-                plot(layout, ax, i, j, phenotype_mean[ph], bins, ph, log, **kwargs)
+                plot_sub(layout, ax, i, j, phenotype_mean[ph], bins, ph, log, **kwargs)
             elif layout[1]*i + j == len(possible_phenotype):
-                plot(layout, ax, i, j, phenotype_mean["Global"], bins, "log Average", True, **kwargs)
+                plot_sub(layout, ax, i, j, phenotype_mean["Global"], bins, "log Average", True, **kwargs)
             else:
                 if layout[0] > 1:
                     ax[i, j].remove()
@@ -51,46 +51,26 @@ def plot_histogram(phenotype_mean, parameters, log=False, **kwargs):
     
     return fig, ax
 
-def plot_saturation_evolution(ax, oper, start, end, step, cognitive_cap, **kwargs):
-    x = np.arange(start//step, end//step)
-    data = np.zeros(end//step - start//step)
-    t, _ = oper.resolve(start)
-    last = start
-    for i in range(0, end//step - start//step):
-        data[i] = measure_saturation_rate(t, cognitive_cap)
-        last += step
-        t, _ = oper.resolve(last)
-    ax.plot(step * x, data, **kwargs)
+def plot_evolution(ax, quantity, oper, start, end, step, parameters, **kwargs):
+    x = np.arange(start, end, step)
+    data = np.zeros(x.size)
+    t, l = oper.resolve(x[0])
+    for i in range(data.size):
+        data[i] = measure(quantity, t, l, parameters)
+        t, l = oper.resolve(x[i])
+    
+    ax.plot(x, data, **kwargs)
     ax.set_xlabel("Interaction")
-    ax.set_ylabel("Global saturation rate")
-
-def plot_asymmetry_evolution(ax, oper, start, end, step, **kwargs):
-    x = np.arange(start//step, end//step)
-    data = np.zeros(end//step - start//step)
-    _, l = oper.resolve(start)
-    last = start
-    for i in range(0, end//step - start//step):
-        data[i] = measure_link_asymmetry(l)
-        last += step
-        _, l = oper.resolve(last)
-    ax.plot(step * x, data, **kwargs)
+    ax.set_ylabel(quantity)
+    
+def plot_randomized_evolution(ax, quantity, oper, start, end, step, parameters, niter=250, mode="o", mc_iter=10, **plot_kwargs):
+    x = np.arange(start, end, step)
+    data = np.zeros(x.size)
+    t, l = oper.resolve(x[0])
+    for i in range(data.size):
+        data[i] = measure(quantity, t, l, parameters, random=True, niter=niter, mode=mode, mc_iter=mc_iter)
+        t, l = oper.resolve(x[i])
+    
+    ax.plot(x, data, **plot_kwargs)
     ax.set_xlabel("Interaction")
-    ax.set_ylabel("Global asymmetry rate")
-
-def plot_individual_asymmetry_evolution(ax, oper, start, end, step, randomised=False, **kwargs):
-    x = np.arange(start//step, end//step)
-    data = np.zeros(end//step - start//step)
-    random_data = np.zeros(end//step - start//step)
-    _, l = oper.resolve(start)
-    last = start
-    for i in range(0, end//step - start//step):
-        data[i] = measure_individual_asymmetry(l)
-        if randomised:
-            random_data[i] = measure_random_individual_asymmetry(l, 250, mode="o")
-        last += step
-        _, l = oper.resolve(last)
-    ax.plot(step * x, data, **kwargs, label="Simulation")
-    if randomised:
-        ax.plot(step * x, random_data, "k--", label="Randomized")
-    ax.set_xlabel("Interaction")
-    ax.set_ylabel("Individual asymmetry rate")
+    ax.set_ylabel(quantity)

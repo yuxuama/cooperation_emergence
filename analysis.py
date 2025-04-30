@@ -82,11 +82,14 @@ def measure_random_individual_asymmetry(link_adjacency_matrix, niter, mode="i&&o
     """Return the median asymmetry rate of a randomized network"""
 
     rates = np.zeros(niter)
-
-    for i in tqdm(range(niter)):
-        randomized_network = randomized(link_adjacency_matrix, mode=mode, mc_iter=mc_iter)
-        rates[i] = measure_individual_asymmetry(randomized_network)
-    
+    if mode == "i&&o":
+        for i in tqdm(range(niter)):
+            randomized_network = randomized(link_adjacency_matrix, mode=mode, mc_iter=mc_iter)
+            rates[i] = measure_individual_asymmetry(randomized_network)
+    else:
+        for i in range(niter):
+            randomized_network = randomized(link_adjacency_matrix, mode=mode, mc_iter=mc_iter)
+            rates[i] = measure_individual_asymmetry(randomized_network)
     return np.median(rates)
 
 def measure_saturation_rate(trust_adjacency_matrix, max_load):
@@ -100,6 +103,11 @@ def measure_saturation_rate(trust_adjacency_matrix, max_load):
             count += 1
 
     return count / total
+
+def measure_number_of_link(link_adjacency_matric):
+    """Return the average and sigma of the distribution of number of out links per agent"""
+    number_out_links = np.sum(link_adjacency_matric, axis=1)
+    return np.mean(number_out_links), np.std(number_out_links, ddof=number_out_links.size - 1) 
 
 def randomized(link_adjacency_matrix, mode, mc_iter=10):
     """Return a randomised version of the network respecting certain conditions regarding the mode chose:
@@ -158,7 +166,7 @@ def monte_carlo_randomisation(niter, link_adjacency):
         to_pop = []
         for i in range(len(swappable_link)):
             test_links = swappable_link[i]
-            if link_invalidate_link(test_links, links):
+            if link_invalidate_test_link(test_links, links):
                 to_pop.append(i-len(to_pop)) # Because pop is len dependent
         for i in to_pop:
             swappable_link.pop(i)
@@ -200,7 +208,7 @@ def compute_swappable_links(link_adjacency):
     return swappable_link
 
 def swappable_links_from_link(i, j, link_adjacency, swappable_link):
-    """Return all the swappable link containing the link i -> j"""
+    """Add to `swappable_link` the swappable link containing the link i -> j in `link_adjacency`"""
     n = link_adjacency.shape[0]
     indexes = np.arange(n)
     c_selector = link_adjacency[i] < 1
@@ -221,7 +229,7 @@ def swappable_links_from_link(i, j, link_adjacency, swappable_link):
             if filtered_adjacency[k, l] > 0:
                 swappable_link.append([i, j, l_filtered_indexes[k], c_filtered_indexes[l]])
 
-def link_invalidate_link(test_links, links):
+def link_invalidate_test_link(test_links, links):
     """Return True if one of the change of link `links` invalidates `test_links`"""
     # Test for link that disappeared
     if links[0] == test_links[0] and links[1] == test_links[1]:

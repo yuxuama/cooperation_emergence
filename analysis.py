@@ -40,6 +40,55 @@ def histogram(trust_adjacency_matrix, parameters, bins=None):
 
     return phenotype_mean
 
+def measure(quantity, trust_adjacency_matrix, link_adjacency_matrix, parameters, randomized=False, *rand_args):
+    """Unified method for measurement
+    WARNING: randomized only work for measures on **links**"""
+
+    possible_quantities = {
+        "Asymmetry": {
+            "func": measure_link_asymmetry,
+            "param": [link_adjacency_matrix]
+            },
+        "Individual asymmetry": {
+            "func": measure_individual_asymmetry,
+            "param": [link_adjacency_matrix]
+            },
+        "Saturation rate": {
+            "func": measure_saturation_rate,
+            "param": [trust_adjacency_matrix, parameters]
+            },
+        "Number of link": {
+            "func": measure_number_of_link,
+            "param": [link_adjacency_matrix]
+            }
+    }
+
+    measure_tool = possible_quantities[quantity]
+
+    if randomized:
+        return randomizer(measure_tool["func"], *rand_args, *measure_tool["param"])
+    
+    return measure_tool["func"](*measure_tool["param"])
+    
+def randomizer(func, niter, mode, mc_iter, *fargs, **fkwargs):
+    """Randomizer decorator for measures"""
+    data = np.zeros(niter)
+    fargs = list(fargs)
+    initial = fargs.pop(0)
+
+    def neutral_embedder(arg):
+        return arg
+    embedder = neutral_embedder
+    if mode == 'i&&o':
+        embedder = tqdm
+
+    for i in embedder(range(niter)):
+        randomized_initial = randomized(initial, mode=mode, mc_iter=mc_iter)
+        data[i] = func(randomized_initial, *fargs, **fkwargs)
+    
+    return np.median(data)
+
+    
 def measure_link_asymmetry(link_adjacency_matrix):
     """Return the proportion of link that are asymmetrical globally"""
     size = link_adjacency_matrix.shape[0]
@@ -157,10 +206,10 @@ def monte_carlo_randomisation(niter, link_adjacency):
 
         draw = np.random.randint(len(swappable_link))
         links = swappable_link[draw]
+        new_link_adjacency[links[2], links[1]] = new_link_adjacency[links[0], links[1]]
         new_link_adjacency[links[0], links[1]] = 0
+        new_link_adjacency[links[0], links[3]] = new_link_adjacency[links[2], links[3]]
         new_link_adjacency[links[2], links[3]] = 0
-        new_link_adjacency[links[2], links[1]] += 1 
-        new_link_adjacency[links[0], links[3]] += 1
 
         # Remove old edges
         to_pop = []
@@ -271,4 +320,5 @@ if __name__ == "__main__":
     print(net_rand)
     print(in_degrees == np.sum(net_rand, axis=0))
     print(out_degrees == np.sum(net_rand, axis=1))
+    print(measure("Individual asymmetry", net_rand, net_rand, 0, True, 100, "i&&o", 10))
 

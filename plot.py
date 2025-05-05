@@ -5,7 +5,7 @@ File where plot routines are defined
 
 import numpy as np
 import matplotlib.pyplot as plt
-from analysis import measure, estimate_etas
+from analysis import measure
 
 def plot_sub(layout, ax, i, j, data, bins, title, log, **kwargs):
     """Auxiliary function used in histogram"""

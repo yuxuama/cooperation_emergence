@@ -6,8 +6,9 @@ File where tools for analysing simulation are defined
 import numpy as np
 from utils import get_vertex_distribution
 from tqdm import tqdm
-from scipy.optimize import newton 
-
+from scipy.optimize import newton
+from numba import njit 
+from numba.typed.typedlist import List
 
 def histogram(trust_adjacency_matrix, parameters, bins=None):
     """Return histogram of the weight distribution for each phenotype and the average distribution in log scale"""
@@ -254,7 +255,7 @@ def compute_randomized(link_adjacency_matrix, mode, mc_iter=10):
     
     return new_link_adjacency
     
-
+@njit
 def monte_carlo_randomisation(niter, link_adjacency):
     """Randomise the network preserving both in and out degree"""
 
@@ -276,24 +277,25 @@ def monte_carlo_randomisation(niter, link_adjacency):
         new_link_adjacency[links[2], links[3]] = 0
 
         # Remove old edges
-        to_pop = []
-        for i in range(len(swappable_link)):
+        i = 0
+        while i < len(swappable_link): 
             test_links = swappable_link[i]
             if link_invalidate_test_link(test_links, links):
-                to_pop.append(i-len(to_pop)) # Because pop is len dependent
-        for i in to_pop:
-            swappable_link.pop(i)
+                swappable_link.pop(i) # Because pop is len dependent
+            else:
+                i += 1
         
         # Find new swappable
         swappable_links_from_link(links[2], links[1], new_link_adjacency, swappable_link)
-        swappable_links_from_link(links[0], links[3], new_link_adjacency, swappable_link)
+        swappable_links_from_link(links[0], links[3], new_link_adjacency, swappable_link, other_link=(links[2], links[1]))
     
     return new_link_adjacency
 
+@njit
 def compute_swappable_links(link_adjacency):
     """Return all possible swappable link of the matrix conserving its structure"""
     n = link_adjacency.shape[0]
-    swappable_link = []
+    swappable_link = List()
     new_link_adjacency = link_adjacency.copy()
     indexes = np.arange(n)
     for i in range(n):
@@ -305,43 +307,43 @@ def compute_swappable_links(link_adjacency):
                     l_selector[k] = False
                 c_selector[i] = False
                 l_selector[j] = False
-                l_filtered_indexes = indexes[l_selector]
-                c_filtered_indexes = indexes[c_selector]
-                
-                selector_shape = (np.sum(l_selector), np.sum(c_selector))
-                if selector_shape[0] == 0 or selector_shape[1] == 0:
+                c_index = indexes[c_selector]
+                l_index = indexes[l_selector]
+
+                if len(l_index) == 0 or len(c_index) == 0:
                     continue
-                matrix_selector = np.outer(l_selector, c_selector)
-                filtered_adjacency = new_link_adjacency[matrix_selector].reshape((selector_shape[0], selector_shape[1]))
-                for k in range(selector_shape[0]):
-                    for l in range(selector_shape[1]):
-                        if filtered_adjacency[k, l] > 0:
-                            swappable_link.append([i, j, l_filtered_indexes[k], c_filtered_indexes[l]])
+
+                for k in range(len(l_index)):
+                    for l in range(len(c_index)):
+                        if link_adjacency[l_index[k], c_index[l]] > 0:
+                            swappable_link.append((i, j, l_index[k], c_index[l]))
 
     return swappable_link
 
-def swappable_links_from_link(i, j, link_adjacency, swappable_link):
-    """Add to `swappable_link` the swappable link containing the link i -> j in `link_adjacency`"""
+@njit
+def swappable_links_from_link(i, j, link_adjacency, swappable_link, other_link=(-1, -1)):
+    """Add to `swappable_link` the swappable link containing the link i -> j in `link_adjacency`
+    the parameter `other_link` is here to prevent doble link in swappable_link"""
     n = link_adjacency.shape[0]
-    indexes = np.arange(n)
     c_selector = link_adjacency[i] < 1
     l_selector = link_adjacency[::,j] < 1
     c_selector[i] = False
     l_selector[j] = False
-    c_filtered_indexes = indexes[c_selector]
-    l_filtered_indexes = indexes[l_selector]
+    indexes = np.arange(n)
+    c_index = indexes[c_selector]
+    l_index = indexes[l_selector]
     
-    selector_shape = (np.sum(l_selector), np.sum(c_selector))
-    if selector_shape[0] == 0 or selector_shape[1] == 0:
+    if len(c_index) == 0 or len(l_index) == 0:
         return
     
-    matrix_selector = np.outer(l_selector, c_selector)
-    filtered_adjacency = link_adjacency[matrix_selector].reshape((selector_shape[0], selector_shape[1]))
-    for k in range(selector_shape[0]):
-        for l in range(selector_shape[1]):
-            if filtered_adjacency[k, l] > 0:
-                swappable_link.append([i, j, l_filtered_indexes[k], c_filtered_indexes[l]])
+    for k in range(len(l_index)):
+        for l in range(len(c_index)):
+            if l_index[k] == other_link[0] and c_index[l] == other_link[1]:
+                continue
+            elif link_adjacency[l_index[k], c_index[l]] > 0:
+                swappable_link.append((i, j, l_index[k], c_index[l]))
 
+@njit
 def link_invalidate_test_link(test_links, links):
     """Return True if one of the change of link `links` invalidates `test_links`"""
     # Test for link that disappeared

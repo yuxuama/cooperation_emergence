@@ -5,21 +5,27 @@ import numpy as np
 from operation import OperationStack
 from utils import save_parameters, print_parameters, create_random_init, create_social_group
 from tqdm import tqdm
+import h5py
+import os
   
 """Graph class for network structure"""
 
 class Network:
 
-    def __init__(self, parameters):
+    def __init__(self, parameters, seed=None):
+        """`parameters:` parameters dict from a YAML parameters file
+        `seed`: the network is identified merely with the paramters. A seed (must be stringfiable) allows discrimination"""
         # Define properties
         self.parameters = parameters
         self.max_iter = parameters["Number of interaction"]
         self.size = parameters["Community size"]
+        self.save_mode = parameters["Save mode"]
         self.min_trust = parameters["Link minimum"]
         self.temp = parameters["Temperature"]
         self.cognitive_capa = parameters["Cognitive capacity"]
         self.strategy_distrib = parameters["Strategy distributions"]
         self.out_dir = parameters["Output directory"]
+        self.name = self.generate_output_name(seed) # Generate name for saving
 
         self.phenotypes = list(self.strategy_distrib.keys())
         self.distribution_grid = [0] # Used to initialized populations of each phenotypes according to parameters.
@@ -106,8 +112,8 @@ class Network:
             end = self.vertices[end]
         start.set_trust(end, trust)
     
-    def reset(self, new_parameters):
-        self.__init__(new_parameters)
+    def reset(self, new_parameters, new_seed=None):
+        self.__init__(new_parameters, new_seed)
     
     def initialize_structure(self):
         """initialize the structure of the network according to the parameters"""
@@ -192,18 +198,32 @@ class Network:
         """Run the simulation
         Return the OperationStack object which contains all the history of the simulation"""
         print_parameters(self.parameters)
-        
-        self.oper.activated = True # Activate write mode of the OperationStack
-        self.oper.set_link_from_array(self.get_adjacency_link_matrix())
-        self.oper.set_trust_from_array(self.get_adjacency_trust_matrix())
+        if self.save_mode == "Stack":
+            self.oper.activated = True # Activate write mode of the OperationStack
+            self.oper.set_link_from_array(self.get_adjacency_link_matrix())
+            self.oper.set_trust_from_array(self.get_adjacency_trust_matrix())
         for _ in tqdm(range(self.max_iter)):
             self.interact()
             self.oper.next_iter()
-        # Save
         self.oper.activated = False # Deactivate write mode
-        self.oper.save(self.out_dir)
-        save_parameters(self.parameters, self.out_dir)
+
+        self.save()
+
         return self.oper
+
+    def save(self):
+        """Handle save of the network"""
+        if self.save_mode == "Stack":
+            out = self.out_dir + self.name + "/"
+            self.oper.save(out)
+            save_parameters(self.parameters, out)
+        elif self.save_mode == "Last":
+            os.makedirs(self.out_dir, exist_ok=True)
+            f = h5py.File(self.out_dir + self.name + ".h5", 'w')
+            f["Trust"] = self.get_adjacency_trust_matrix()
+            f["Link"] = self.get_adjacency_link_matrix()
+        elif self.save_mode != "Off":
+            raise ValueError("The 'Save mode' parameter used is not handled")
 
     def get_adjacency_trust_matrix(self):
         """Return the adjacency matrix of all trust"""
@@ -233,9 +253,9 @@ class Network:
 
         return link_adjacency_matrix       
 
-    def generate_output_name(self):
+    def generate_output_name(self, seed):
         """Generate a name that represent uniquely this network
-        format: '<Heurisitc>_<Distribution>_I<Init>_L<Link minimum>_C<Cognitive capacity>_S<size>_T<temperature>
+        format: '<Heurisitc>_<Distribution>_I<Init>_L<Link minimum>_C<Cognitive capacity>_S<Size>_T<Temperature>_<seed>
         distribution format: "Envious: 0.3" -> E3"""
         name = ""
         name += self.parameters["Heuristic"]
@@ -258,7 +278,11 @@ class Network:
         name += "C" + str(self.cognitive_capa) + "_"
         name += "S" + str(self.size) + "_"
         name += "T" + str(self.temp)
-        return name
+
+        if seed is None:
+            return name
+        
+        return name + "_" + str(seed)
 
 
 

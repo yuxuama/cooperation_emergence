@@ -2,8 +2,7 @@
 Execute simulation of the interacting network
 """
 from graph import Network
-from utils import parse_parameters, create_social_group, create_random_init
-import numpy as np
+from utils import parse_parameters
 
 parameters_file = r"./parameters.yaml"
 

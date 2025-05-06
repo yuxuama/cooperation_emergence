@@ -1,7 +1,10 @@
 # YAML document with parameters of the simulation
 # Simulation parameters
 Number of interaction: 1000000
-Output directory: "./out/empty_trust_total_C750_Th10_T0.7/"
+Output directory: "./out/"
+# Define the way we want to save the simulation:
+# Among "Stack" (using OperationStack), "Last" (Only final state), "Freq" (TODO), "Off" (No save)
+Save mode: "Stack"
 
 # Initial condition
 # Among "Empty", "Random", "Groups"

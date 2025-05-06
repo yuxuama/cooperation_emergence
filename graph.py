@@ -19,6 +19,9 @@ class Network:
         self.parameters = parameters
         self.max_iter = parameters["Number of interaction"]
         self.size = parameters["Community size"]
+        self.verbose = True
+        if "Verbose" in self.parameters:
+            self.verbose = parameters["Verbose"]
         self.save_mode = parameters["Save mode"]
         self.min_trust = parameters["Link minimum"]
         self.temp = parameters["Temperature"]
@@ -197,12 +200,18 @@ class Network:
     def play(self):
         """Run the simulation
         Return the OperationStack object which contains all the history of the simulation"""
-        print_parameters(self.parameters)
+
+        def idle(arg):
+            return arg
+        selector = idle
+        if self.verbose:
+            print_parameters(self.parameters)
+            selector = tqdm
         if self.save_mode == "Stack":
             self.oper.activated = True # Activate write mode of the OperationStack
             self.oper.set_link_from_array(self.get_adjacency_link_matrix())
             self.oper.set_trust_from_array(self.get_adjacency_trust_matrix())
-        for _ in tqdm(range(self.max_iter)):
+        for _ in selector(range(self.max_iter)):
             self.interact()
             self.oper.next_iter()
         self.oper.activated = False # Deactivate write mode

@@ -1,10 +1,11 @@
 # YAML document with parameters of the simulation
 # Simulation parameters
 Number of interaction: 1000000
-Output directory: "./out/"
+Output directory: "./out/statistical/"
 # Define the way we want to save the simulation:
 # Among "Stack" (using OperationStack), "Last" (Only final state), "Freq" (TODO), "Off" (No save)
-Save mode: "Stack"
+Save mode: "Last"
+Verbose: False # Default True
 
 # Initial condition
 # Among "Empty", "Random", "Groups"
@@ -16,7 +17,7 @@ Community size: 75
 Link minimum: 10
 Cognitive capacity: 750
 Heuristic: "RTH" # Among "SITH", "Complex", "RTH"
-Temperature: 0.7
+Temperature: 0.25
 
 # Valid phenotypes (with caps): Trustful, Random, Optimistic, Pessimist, Envious
 Strategy distributions:

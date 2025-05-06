@@ -44,6 +44,7 @@ def histogram(trust_adjacency_matrix, parameters, bins=None):
 
 def measure(quantity, trust_adjacency_matrix, link_adjacency_matrix, parameters, random=False, **rand_kwargs):
     """Unified method for measurement
+    Quantity among: "Asymmetry", "Individual asymmetry", "Saturation rate", "Number of link"
     WARNING: randomized only work for measures on **links**"""
 
     possible_quantities = {

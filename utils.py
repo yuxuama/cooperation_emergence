@@ -4,7 +4,8 @@ All utils functions
 
 from yaml import safe_load, dump
 import numpy as np
-import matplotlib.pyplot as plt
+import h5py
+import os
 
 """UTILS"""
 
@@ -50,6 +51,22 @@ def get_vertex_distribution(parameters):
         table[i] = phenotypes[pointer-1]
     
     return table
+
+def load_hdf5(filename):
+    """Return the trust and the link matrices stored in the hdf5 file `filename`"""
+    f = h5py.File(filename, 'r')
+    link = np.array(f.get("Link"), dtype=int)
+    trust = np.array(f.get("Trust"))
+    return trust, link
+
+def list_all_hdf5(dirpath):
+    """Return the list of all the hdf5 files in the directory with path `dirpath`"""
+    files = [dirpath + f for f in os.listdir(dirpath)]
+    h5_files = []
+    for i in range(len(files)):
+        if files[i].endwith(".h5"):
+            h5_files.append(files[i])
+    return h5_files.sort()
 
 """INIT functions"""
 

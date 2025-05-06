@@ -78,15 +78,16 @@ def create_social_group(size, assignation, adjacency_matrix, min_trust):
             if j != i:
                 adjacency_matrix[real_sample[i], real_sample[j]] = min_trust
 
-def create_random_init(adjacency_matrix, cognitive_capa, min_link):
+def create_random_init(adjacency_matrix, cognitive_capa, min_trust):
     """Create a network with `n` random trust link"""
     n = adjacency_matrix.shape[0]
     for i in range(n):
         for j in range(n):
-            s = np.sum(adjacency_matrix[i])
-            remain = cognitive_capa - s
-            if remain <= 0:
-                adjacency_matrix[i, j] = 0
-            else:
-                adjacency_matrix[i, j] = np.random.randint(0, min(2 * min_link, remain+1))
+            if i != j:
+                s = np.sum(adjacency_matrix[i])
+                remain = cognitive_capa - s
+                if remain <= 0:
+                    adjacency_matrix[i, j] = 0
+                else:
+                    adjacency_matrix[i, j] = np.random.randint(0, min(2 * min_trust, remain+1))
 

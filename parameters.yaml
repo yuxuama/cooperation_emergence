@@ -1,7 +1,12 @@
-# WAML document with parameters of the simulation
+# YAML document with parameters of the simulation
 # Simulation parameters
 Number of interaction: 1000000
 Output directory: "./out/empty_trust_total_C750_Th10_T0.7/"
+
+# Initial condition
+# Among "Empty", "Random", "Groups"
+# If "Groups" an additional parameter "Number of groups" must be added (default is 1)
+Init: "Empty"
 
 # Model parameters
 Community size: 75

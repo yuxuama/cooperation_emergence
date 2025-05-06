@@ -87,11 +87,17 @@ class OperationStack:
         """Set all the stack according to the csv `stack_file`
         Warning: overwrites all existing values
         """
-        df = pd.read_csv(dir_path + "stack.csv")
-        self.stacks = df.to_dict('list')
-        self.set_matrices_from_file(dir_path + "init.h5")
-        self.iter_number = self.stacks["Interaction number"][-1]
-    
+        try:
+            df = pd.read_csv(dir_path + "stack.csv")
+            self.stacks = df.to_dict('list')
+            self.set_matrices_from_file(dir_path + "init.h5")
+            self.iter_number = self.stacks["Interaction number"][-1]
+        except OSError:
+            print("Il semble que ce dossier ne corresponde pas à la structure d'une OperationStacks")
+        except Exception as err:
+            print("Unexpected {0} of type {1}. This may be because the dir is not containing a Stack structure".format(err, type(err)))
+
+
     def set_matrices_from_file(self, filepath):
         """set the link and trust adjacency matrices stored in the hdf5 file with path `filepath`"""
         f = h5py.File(filepath, 'r')

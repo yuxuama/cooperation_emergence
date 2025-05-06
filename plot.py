@@ -63,7 +63,7 @@ def plot_evolution(ax, quantity, oper, start, end, step, parameters, **kwargs):
     ax.set_xlabel("Interaction")
     ax.set_ylabel(quantity)
     
-def plot_randomized_evolution(ax, quantity, oper, start, end, step, parameters, niter=250, mode="o", mc_iter=10, **plot_kwargs):
+def plot_randomized_evolution(ax, quantity, oper, start, end, step, parameters, niter=300, mode="o", mc_iter=50, **plot_kwargs):
     x = np.arange(start, end, step)
     data = np.zeros(x.size)
     t, l = oper.resolve(x[0])

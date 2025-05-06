@@ -14,10 +14,9 @@ from graph import Network
 from utils import parse_parameters
 
 yaml_file = r"<path to yaml file>"
-out_dir = r"<path to out directory>"
 
 parameters = parse_parameters(yaml_file) # Load parameters from the file
-net = Network(parameters, out_dir) # Define the Network object
+net = Network(parameters) # Define the Network object
 net.play() # Run the simulation
 ```
 

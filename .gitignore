@@ -4,4 +4,4 @@ test
 test.py
 anim
 plot
-analysis.ipynb
+*.ipynb

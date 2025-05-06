@@ -3,7 +3,7 @@ Implement the mathematical graph structure of the network
 """
 import numpy as np
 from operation import OperationStack
-from utils import save_parameters, print_parameters
+from utils import save_parameters, print_parameters, create_random_init, create_social_group
 from tqdm import tqdm
   
 """Graph class for network structure"""
@@ -11,7 +11,7 @@ from tqdm import tqdm
 class Network:
 
     def __init__(self, parameters):
-        # Properties definition
+        # Define properties
         self.parameters = parameters
         self.max_iter = parameters["Number of interaction"]
         self.size = parameters["Community size"]
@@ -28,7 +28,6 @@ class Network:
         self.distribution_grid = self.size * np.array(self.distribution_grid)
          
         # Creating vertices
-
         self.vertices = np.zeros(self.size, dtype=Vertex)
         for i in range(self.size):
             self.create_vertex(i)
@@ -36,6 +35,9 @@ class Network:
         # Operation
         self.oper = OperationStack()
         self.oper.activated = False
+
+        # Initializing network structure
+        self.initialize_structure()
     
     def create_vertex(self, index):
         """Add a person into the simulation"""
@@ -103,6 +105,49 @@ class Network:
         if type(end) == int:
             end = self.vertices[end]
         start.set_trust(end, trust)
+    
+    def reset(self, new_parameters):
+        self.__init__(new_parameters)
+    
+    def initialize_structure(self):
+        """initialize the structure of the network according to the parameters"""
+        mode = self.parameters["Init"]
+        if mode == "Random":
+            self.init_random()
+        elif mode == "Groups":
+            if "Number of groups" in self.parameters:
+                self.init_groups(self.parameters["Number of groups"])
+            else:
+                print("INFO: parameter 'Number of groups' found in parameter file")
+                default_value = self.size // (self.cognitive_capa + 1)
+                print("INFO: Using default value: {}".format(default_value))
+                self.init_groups(default_value)
+        elif mode != "Empty":
+            raise KeyError("The initial condition defined by the 'Init' parameters is unknown")
+
+    def init_random(self):
+        """Initialize the network with random trust values"""
+        trust_adjacency_matrix = np.zeros((self.size, self.size))
+        create_random_init(trust_adjacency_matrix, self.cognitive_capa, self.min_trust)
+        self.set_adjacency_trust_matrix(trust_adjacency_matrix)
+
+    def init_groups(self, n_group):
+        """Initialize the network with `n_group` groups
+        If the size of the network is not divisible by `n_group` then
+        creates a smaller group at the end"""
+        group_size = self.size // n_group
+        if group_size - 1 > self.cognitive_capa:
+            raise ValueError("Impossible to create {0} fully connected group with cognitive capacity {1} and network of size {2}".format(n_group, self.cognitive_capa, self.size))
+        group_rest = self.size % n_group
+        sizes = np.ones(n_group, dtype=int) * group_size
+        if group_rest != 0:
+            print("WARNING: size is not divisible by {}".format(n_group))
+            print("  |_ {} agent will not be in a group".format(group_rest))
+        assignation = np.zeros(self.size, dtype=bool)
+        trust_adjacency_matrix = np.zeros((self.size, self.size))
+        for i in range(n_group):
+            create_social_group(sizes[i], assignation, trust_adjacency_matrix, self.min_trust)
+        self.set_adjacency_trust_matrix(trust_adjacency_matrix)
 
     def interact(self):
         """Choose randomly two vertices and a game matrix a resolve the interaction
@@ -169,7 +214,8 @@ class Network:
         return trust_adjacency_matrix
 
     def set_adjacency_trust_matrix(self, adjacency_matrix):
-        """Set all trust value to correspond to the adjacency matrix"""
+        """Set all trust value to correspond to the adjacency matrix
+        The links are updated accordingly automatically"""
         assert adjacency_matrix.shape == (self.size, self.size)
         assert np.max(np.sum(adjacency_matrix, axis=1)) <= self.cognitive_capa
         for i in range(self.size):
@@ -185,7 +231,36 @@ class Network:
             for vend in v.link:
                 link_adjacency_matrix[i, vend.index] = True
 
-        return link_adjacency_matrix
+        return link_adjacency_matrix       
+
+    def generate_output_name(self):
+        """Generate a name that represent uniquely this network
+        format: '<Heurisitc>_<Distribution>_I<Init>_L<Link minimum>_C<Cognitive capacity>_S<size>_T<temperature>
+        distribution format: "Envious: 0.3" -> E3"""
+        name = ""
+        name += self.parameters["Heuristic"]
+        name += "_"
+        # distribution
+        distribution = ""
+        keys = list(self.parameters["Strategy distributions"].keys())
+        keys = sorted(keys)
+        for key in keys:
+            distribution += key[0] + str(self.parameters["Strategy distributions"][key])[2::]
+        name += distribution
+        
+        # other
+        name += "_"
+        if "Number of groups" in self.parameters and self.parameters["Init"] == "Groups":
+            name += str(self.parameters["Number of groups"])
+        name += self.parameters["Init"]
+        name += "_"
+        name += "L" + str(self.min_trust) + "_"
+        name += "C" + str(self.cognitive_capa) + "_"
+        name += "S" + str(self.size) + "_"
+        name += "T" + str(self.temp)
+        return name
+
+
 
 
 """Vertex class for handling people"""

@@ -12,12 +12,14 @@ formation problem into that context. The other ingredient of the model is the li
   - `"Last"`: save only the final state in a `.h5` file
   - `"Off"`: don't save
 - Verbose (optional: default=True): if True display information when the network is runned
+
 **Initial state**
 - Init: 3 different initializations
   -`"Empty"`: no trust values
   -`"Random"`: random trust values
   -`"Groups"`: create fully connected disjoint groups
 - Number of groups (optional): Number of groups when Init is `"Groups"`. Default take the biggest size of group possible according to other parameters such as Size and Cognitive capacity
+
 **Model parameters**
 - Community size: number of agent in the simulation
 - Link minimum: minimum trust value for a social tie to exist
@@ -28,7 +30,7 @@ formation problem into that context. The other ingredient of the model is the li
 - Temperature: parameter controling to what extent an agent follow its predefined strategy
 - Strategy distribution:
   - Envious (optional): proportion of Envious phenotype
-  - Optimist (optional): proportion of Optimis phenotype
+  - Optimist (optional): proportion of Optimist phenotype
   - Pessimist (optional): proportion of Pessimist phenotype
   - Random (optional): proportion of Random phenotype
   - Trustful (optional): proportion of Trustful phenotype

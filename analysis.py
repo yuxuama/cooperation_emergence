@@ -42,7 +42,7 @@ def histogram(trust_adjacency_matrix, parameters, bins=None):
 
     return phenotype_mean
 
-def measure(quantity, trust_adjacency_matrix, link_adjacency_matrix, parameters, random=False, **rand_kwargs):
+def measure(quantity, trust_adjacency_matrix, link_adjacency_matrix, parameters, random=False, full=False,**rand_kwargs):
     """Unified method for measurement
     Quantity among: "Asymmetry", "Individual asymmetry", "Saturation rate", "Number of link"
     WARNING: randomized only work for measures on **links**"""
@@ -54,7 +54,7 @@ def measure(quantity, trust_adjacency_matrix, link_adjacency_matrix, parameters,
             },
         "Individual asymmetry": {
             "func": measure_individual_asymmetry,
-            "param": [link_adjacency_matrix]
+            "param": [link_adjacency_matrix, full]
             },
         "Saturation rate": {
             "func": measure_saturation_rate,
@@ -109,7 +109,7 @@ def measure_link_asymmetry(link_adjacency_matrix):
     else:
         return number_of_asymmetric_link / number_of_link
 
-def measure_individual_asymmetry(link_adjacency_matrix):
+def measure_individual_asymmetry(link_adjacency_matrix, full=False):
     """Return the proportion of link that are asymmetrical per vertex"""
     n = link_adjacency_matrix.shape[0]
     number_of_link = np.sum(link_adjacency_matrix, axis=1)
@@ -127,6 +127,8 @@ def measure_individual_asymmetry(link_adjacency_matrix):
             number_of_asymmetric[i] = 0
         else:
             number_of_asymmetric[i] /= number_of_link[i]
+    if full:
+        return number_of_asymmetric
     return np.median(number_of_asymmetric)
 
 def measure_saturation_rate(trust_adjacency_matrix, parameters):
@@ -229,15 +231,39 @@ def compute_randomized(link_adjacency_matrix, mode, mc_iter=10):
     Modes:
     - `'i'`: "in" respect the in degree of each node
     - `'o'`: "out" respect the out degree of each node
-    - `i&&o`: "in" and "out" respect the composite degree (both in and out degrees)"""
+    - `'i&&o'`: "in" and "out" respect the composite degree (both in and out degrees)
+    - `'link'`: just reaffect links keeping its number constant"""
     n = link_adjacency_matrix.shape[0]
     in_degree = np.sum(link_adjacency_matrix, axis=0)
     out_degree = np.sum(link_adjacency_matrix, axis=1)
     new_link_adjacency = np.zeros(link_adjacency_matrix.shape)
+    total_link_number = np.sum(link_adjacency_matrix)
 
     if mode == "i&&o":
         return monte_carlo_randomisation(mc_iter, link_adjacency_matrix)
-    
+    elif mode == "link":
+        count = n # Initally all the diagonal links are "taken" because it is impossible
+        for i in range(total_link_number):
+            draw = np.random.randint(n * n - count)
+            pointer = 0
+            break_context = False
+            for i in range(n):
+                for j in range(n):
+                    index = i * n + j
+                    if i == j:
+                        pointer += 1
+                        continue
+                    if new_link_adjacency[i, j] <= 0:
+                        if draw == index - pointer:
+                            new_link_adjacency[i, j] = 1
+                            count += 1
+                            break_context = True
+                            break
+                    else:
+                        pointer += 1
+                if break_context:
+                    break
+
     for i in range(n):
         if mode == "i":
             draw = np.random.choice(n-1, in_degree[i], replace=False) # n-1 because a link with oneself is not allowed
@@ -253,7 +279,7 @@ def compute_randomized(link_adjacency_matrix, mode, mc_iter=10):
                     new_link_adjacency[i, j] = 1
                 else:
                     new_link_adjacency[i, j+1] = 1
-    
+
     return new_link_adjacency
     
 @njit
@@ -383,9 +409,11 @@ if __name__ == "__main__":
     in_degrees = np.sum(test, axis=0)
     out_degrees = np.sum(test, axis=1)
     print(test)
-    net_rand = compute_randomized(test, "i&&o", mc_iter=1000)
+    print(np.sum(test))
+    net_rand = compute_randomized(test, "link")
     print(net_rand)
-    print(in_degrees == np.sum(net_rand, axis=0))
-    print(out_degrees == np.sum(net_rand, axis=1))
-    print(measure("Individual asymmetry", net_rand, net_rand, 0, niter=100, mode="i&&o", mc_iter=10))
+    print(np.sum(net_rand))
+    #print(in_degrees == np.sum(net_rand, axis=0))
+    #print(out_degrees == np.sum(net_rand, axis=1))
+    #print(measure("Individual asymmetry", net_rand, net_rand, 0, niter=100, mode="i&&o", mc_iter=10))
 

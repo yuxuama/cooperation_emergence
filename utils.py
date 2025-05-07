@@ -64,9 +64,9 @@ def list_all_hdf5(dirpath):
     files = [dirpath + f for f in os.listdir(dirpath)]
     h5_files = []
     for i in range(len(files)):
-        if files[i].endwith(".h5"):
+        if files[i].endswith(".h5"):
             h5_files.append(files[i])
-    return h5_files.sort()
+    return h5_files
 
 """INIT functions"""
 

@@ -32,6 +32,8 @@ class Network:
         self.cognitive_capa = parameters["Cognitive capacity"]
         self.strategy_distrib = parameters["Strategy distributions"]
         self.out_dir = parameters["Output directory"]
+        if "Seed" in parameters:
+            seed = parameters["Seed"]
         self.name = generate_output_name_from_parameters(self.parameters, seed)
 
         self.phenotypes = list(self.strategy_distrib.keys())
@@ -188,16 +190,16 @@ class Network:
             os.makedirs(self.out_dir + self.name, exist_ok=True)
             save_parameters(old_parameters, self.out_dir + self.name + "/" , prefix="old_")
         elif self.save_mode == "Last":
-            if "Seed" in self.parameters:
-                seed = self.parameters["Seed"]
+            if "Reload seed" in self.parameters:
+                seed = self.parameters["Reload seed"]
             else:
                 seed = None
             old_name = generate_output_name_from_parameters(old_parameters, seed)
             try:
-                f = h5py.File(loc + old_name)
+                f = h5py.File(loc + old_name + ".h5")
             except Exception as err:
                 raise Exception("No file was found in '{0}' with name '{1}': Impossible to reload \n " \
-                "You may have forgotten the 'Seed' parameters or the 'Reload directory' parameter")
+                "You may have forgotten the 'Seed' parameters or the 'Reload directory' parameter".format(loc, old_name))
             t = f.get("Trust")
             self.set_adjacency_trust_matrix(t)
             save_parameters(old_parameters, self.out_dir, prefix="old_")
@@ -282,7 +284,7 @@ class Network:
             f["Trust"] = self.get_adjacency_trust_matrix()
             f["Link"] = self.get_adjacency_link_matrix()
             f["Interaction"] = self.max_inter
-            save_parameters(self.parameters, out)
+            save_parameters(self.parameters, self.out_dir)
         elif self.save_mode != "Off":
             raise ValueError("The 'Save mode' parameter used is not handled")
 

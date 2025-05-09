@@ -279,6 +279,7 @@ class Network:
             save_parameters(self.parameters, out)
         elif self.save_mode == "Last":
             print("Saving in: ", self.out_dir)
+            print("Name is: ", self.name)
             os.makedirs(self.out_dir, exist_ok=True)
             f = h5py.File(self.out_dir + self.name + ".h5", 'w')
             f["Trust"] = self.get_adjacency_trust_matrix()

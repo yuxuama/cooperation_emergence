@@ -82,7 +82,7 @@ def randomizer(func, *fargs, niter=300, mode="i&&o", mc_iter=100, **fkwargs):
     def neutral_embedder(arg):
         return arg
     embedder = neutral_embedder
-    if mode == 'i&&o':
+    if mode == 'i&&o' or mode == "link":
         embedder = tqdm
 
     for i in embedder(range(niter)):
@@ -236,7 +236,7 @@ def compute_randomized(link_adjacency_matrix, mode, mc_iter=10):
     in_degree = np.sum(link_adjacency_matrix, axis=0)
     out_degree = np.sum(link_adjacency_matrix, axis=1)
     new_link_adjacency = np.zeros(link_adjacency_matrix.shape)
-    total_link_number = np.sum(link_adjacency_matrix)
+    total_link_number = int(np.sum(link_adjacency_matrix))
 
     if mode == "i&&o":
         return monte_carlo_randomisation(mc_iter, link_adjacency_matrix)
@@ -262,6 +262,9 @@ def compute_randomized(link_adjacency_matrix, mode, mc_iter=10):
                         pointer += 1
                 if break_context:
                     break
+            if count == n * n:
+                break
+        return new_link_adjacency
 
     for i in range(n):
         if mode == "i":

@@ -82,7 +82,7 @@ def randomizer(func, *fargs, niter=300, mode="i&&o", mc_iter=100, **fkwargs):
     def neutral_embedder(arg):
         return arg
     embedder = neutral_embedder
-    if mode == 'i&&o' or mode == "link":
+    if mode == 'i&&o':
         embedder = tqdm
 
     for i in embedder(range(niter)):
@@ -235,35 +235,24 @@ def compute_randomized(link_adjacency_matrix, mode, mc_iter=10):
     n = link_adjacency_matrix.shape[0]
     in_degree = np.sum(link_adjacency_matrix, axis=0)
     out_degree = np.sum(link_adjacency_matrix, axis=1)
-    new_link_adjacency = np.zeros(link_adjacency_matrix.shape)
+    new_link_adjacency = np.zeros(link_adjacency_matrix.shape, dtype=int)
     total_link_number = int(np.sum(link_adjacency_matrix))
 
     if mode == "i&&o":
         return monte_carlo_randomisation(mc_iter, link_adjacency_matrix)
     elif mode == "link":
-        count = n # Initally all the diagonal links are "taken" because it is impossible
-        for i in range(total_link_number):
-            draw = np.random.randint(n * n - count)
-            pointer = 0
-            break_context = False
-            for i in range(n):
-                for j in range(n):
-                    index = i * n + j
-                    if i == j:
-                        pointer += 1
-                        continue
-                    if new_link_adjacency[i, j] <= 0:
-                        if draw == index - pointer:
-                            new_link_adjacency[i, j] = 1
-                            count += 1
-                            break_context = True
-                            break
-                    else:
-                        pointer += 1
-                if break_context:
-                    break
-            if count == n * n:
-                break
+        try:
+            draw_link = np.random.choice(n*(n-1), size=total_link_number, replace=False)
+        except:
+            print(link_adjacency_matrix)
+            raise Exception()
+        draw_link.sort()
+        for index in draw_link:
+            i = index // (n-1)
+            j_red = index % (n-1)
+            if j_red >= i:
+                j_red += 1
+            new_link_adjacency[i, j_red] = 1
         return new_link_adjacency
 
     for i in range(n):

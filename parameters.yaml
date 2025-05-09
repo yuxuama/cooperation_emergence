@@ -1,19 +1,21 @@
 # YAML document with parameters of the simulation
 # Simulation parameters
 Number of interaction: 1000000
-Output directory: "./out/statistical/"
+Output directory: "./out/"
 # Define the way we want to save the simulation:
 # Among "Stack" (using OperationStack), "Last" (Only final state), "Freq" (TODO), "Off" (No save)
-Save mode: "Last"
-Verbose: False # Default True
+Save mode: "Stack"
+Verbose: True # Default True
 
 # Initial condition
-# Among "Empty", "Random", "Groups"
+# Among "Empty", "Random", "Groups" and "Reload"
 # If "Groups" an additional parameter "Number of groups" must be added (default is 1)
-Init: "Empty"
+# If "Reload" a "Reload directory" can be defined as well as a "Seed"
+Init: "Reload"
+Reload directory: "./out/"
 
 # Model parameters
-Community size: 75
+Community size: 220
 Link minimum: 10
 Cognitive capacity: 750
 Heuristic: "RTH" # Among "SITH", "Complex", "RTH"

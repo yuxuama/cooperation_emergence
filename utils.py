@@ -14,15 +14,86 @@ def parse_parameters(yaml_file):
     stream = open(yaml_file, 'r')
     return safe_load(stream)
 
-def save_parameters(data, dir_path):
+def save_parameters(data, dir_path, prefix=""):
     """Save the parameters represented by `data` in the `dir_path` directory"""
-    stream = open(dir_path + "parameters.yaml", 'w')
-    dump(data, stream=stream,default_flow_style=False)
+    stream = open(dir_path + prefix + "parameters.yaml", 'w')
+    dump(data, stream=stream, default_flow_style=False)
 
 def print_parameters(parameters):
     """Print the parameters extracted from a yaml file"""
     for key, values in parameters.items():
         print("..", key, ": ", values)
+
+def generate_output_name_from_parameters(parameters, seed):
+    """Generate a name that represent uniquely this network
+    format: '<Heurisitc>_<Distribution>_I<Init>_L<Link minimum>_C<Cognitive capacity>_S<Size>_T<Temperature>_<seed>
+    distribution format: "Envious: 0.3" -> E3"""
+    name = ""
+    name += parameters["Heuristic"]
+    name += "_"
+    # distribution
+    distribution = ""
+    keys = list(parameters["Strategy distributions"].keys())
+    keys = sorted(keys)
+    for key in keys:
+        distribution += key[0] + str(parameters["Strategy distributions"][key])[2::]
+    name += distribution
+    
+    # other
+    name += "_"
+    if "Number of groups" in parameters and parameters["Init"] == "Groups":
+        name += str(parameters["Number of groups"])
+    name += parameters["Init"]
+    name += "_"
+    name += "L" + str(parameters["Link minimum"]) + "_"
+    name += "C" + str(parameters["Cognitive capacity"]) + "_"
+    name += "S" + str(parameters["Community size"]) + "_"
+    name += "T" + str(parameters["Temperature"])
+
+    if seed is None:
+        return name
+    
+    return name + "_" + str(seed)
+
+def model_parameters_change(old_parameters, parameters):
+    """Compare the model parameters 'Link minimum', 'Cognitive capacity' and 'Temperature'"""
+
+    if old_parameters["Save mode"] != parameters["Save mode"]:
+        raise KeyError("Reload can be done only with the same saving mode parameters")
+    if old_parameters["Community size"] != parameters["Community size"]:
+        raise KeyError("Incompatible sizes of the networks: cannot reload")
+    if old_parameters["Strategy distributions"] != parameters["Strategy distributions"]:
+        raise KeyError("Incompatible phenotype distribution: cannot reload")
+    if old_parameters["Link minimum"] != old_parameters["Link minimum"]:
+        raise KeyError("Incompatible phenotype distribution: cannot reload")
+
+    model_p_name = ["Cognitive capacity", "Temperature", "Heuristic"]
+    model_old_p = []
+    model_p = []
+    diff = np.zeros(3, dtype=bool)
+    for i in range(len(model_p_name)):
+        old = old_parameters[model_p_name[i]]
+        new = parameters[model_p_name[i]]
+        if old != new:
+            diff[i] = True
+        model_old_p.append(old)
+        model_p.append(new)
+    
+    if np.sum(diff) == 0:
+        return
+    
+    print("WARNING: some parameters of the simulation changed:")
+    for i in range(len(diff)):
+        if diff[i]:
+            print("{0}: {1} --> {2}".format(model_p_name[i], model_old_p[i], model_p[i]))
+    print()
+    proceed = input("Proceed ? [y]/n ")
+    if proceed == "" or proceed == "y":
+        return
+    else:
+        print("Aborting reload sequence")
+        exit(1)
+
 
 def readable_adjacency(adjacency_matrix=np.ndarray):
     """Gives the adjacency matric in a form usalble in https://graphonline.top/en/create_graph_by_matrix"""

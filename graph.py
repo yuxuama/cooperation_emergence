@@ -3,7 +3,10 @@ Implement the mathematical graph structure of the network
 """
 import numpy as np
 from operation import OperationStack
-from utils import save_parameters, print_parameters, create_random_init, create_social_group
+from utils import save_parameters, print_parameters, \
+    create_random_init, create_social_group, \
+    parse_parameters, generate_output_name_from_parameters, \
+    model_parameters_change, readable_adjacency
 from tqdm import tqdm
 import h5py
 import os
@@ -17,7 +20,8 @@ class Network:
         `seed`: the network is identified merely with the paramters. A seed (must be stringfiable) allows discrimination"""
         # Define properties
         self.parameters = parameters
-        self.max_iter = parameters["Number of interaction"]
+        self.iter_number = parameters["Number of interaction"]
+        self.max_inter = self.iter_number # Can be modified if reload
         self.size = parameters["Community size"]
         self.verbose = True
         if "Verbose" in self.parameters:
@@ -28,7 +32,7 @@ class Network:
         self.cognitive_capa = parameters["Cognitive capacity"]
         self.strategy_distrib = parameters["Strategy distributions"]
         self.out_dir = parameters["Output directory"]
-        self.name = self.generate_output_name(seed) # Generate name for saving
+        self.name = generate_output_name_from_parameters(self.parameters, seed)
 
         self.phenotypes = list(self.strategy_distrib.keys())
         self.distribution_grid = [0] # Used to initialized populations of each phenotypes according to parameters.
@@ -131,6 +135,8 @@ class Network:
                 default_value = self.size // (self.cognitive_capa + 1)
                 print("INFO: Using default value: {}".format(default_value))
                 self.init_groups(default_value)
+        elif mode == "Reload":
+            self.re_load_with_params()
         elif mode != "Empty":
             raise KeyError("The initial condition defined by the 'Init' parameters is unknown")
 
@@ -157,6 +163,45 @@ class Network:
         for i in range(n_group):
             create_social_group(sizes[i], assignation, trust_adjacency_matrix, self.min_trust)
         self.set_adjacency_trust_matrix(trust_adjacency_matrix)
+
+    def re_load_with_params(self):
+        """Reload the network existing in a directory. Saving mode must be the same as the
+        previous network but also `size` and `heuristic`.
+        If save mode is "Last": reopen the `.h5` with the previous name"""
+        # Localization of old
+        if "Reload directory" in self.parameters:
+            old_parameters = parse_parameters(self.parameters["Reload directory"] + "parameters.yaml")
+            loc = self.parameters["Reload directory"] 
+        else:
+            try:
+                old_parameters = parse_parameters(self.out_dir + "parameters.yaml")
+                loc = self.out_dir
+            except Exception as err:
+                raise NameError("It seems there is no parameters to reload with \n maybe you forgot the 'Reload directory' parameter")
+        
+        model_parameters_change(old_parameters, self.parameters)
+
+        if self.save_mode == "Stack":
+            self.oper.load_stack_from_dir(loc)
+            t, _ = self.oper.resolve(-1)
+            self.set_adjacency_trust_matrix(t)
+            os.makedirs(self.out_dir + self.name, exist_ok=True)
+            save_parameters(old_parameters, self.out_dir + self.name + "/" , prefix="old_")
+        elif self.save_mode == "Last":
+            if "Seed" in self.parameters:
+                seed = self.parameters["Seed"]
+            else:
+                seed = None
+            old_name = generate_output_name_from_parameters(old_parameters, seed)
+            try:
+                f = h5py.File(loc + old_name)
+            except Exception as err:
+                raise Exception("No file was found in '{0}' with name '{1}': Impossible to reload \n " \
+                "You may have forgotten the 'Seed' parameters or the 'Reload directory' parameter")
+            t = f.get("Trust")
+            self.set_adjacency_trust_matrix(t)
+            save_parameters(old_parameters, self.out_dir, prefix="old_")
+        self.max_inter += old_parameters["Number of interaction"]
 
     def interact(self):
         """Choose randomly two vertices and a game matrix a resolve the interaction
@@ -211,11 +256,14 @@ class Network:
             self.oper.activated = True # Activate write mode of the OperationStack
             self.oper.set_link_from_array(self.get_adjacency_link_matrix())
             self.oper.set_trust_from_array(self.get_adjacency_trust_matrix())
-        for _ in selector(range(self.max_iter)):
+
+        # Main loop
+        for _ in selector(range(self.iter_number)):
             self.interact()
             self.oper.next_iter()
         self.oper.activated = False # Deactivate write mode
 
+        # Saving
         self.save()
 
         return self.oper
@@ -223,14 +271,18 @@ class Network:
     def save(self):
         """Handle save of the network"""
         if self.save_mode == "Stack":
+            print("Saving in: ", self.out_dir + self.name)
             out = self.out_dir + self.name + "/"
             self.oper.save(out)
             save_parameters(self.parameters, out)
         elif self.save_mode == "Last":
+            print("Saving in: ", self.out_dir)
             os.makedirs(self.out_dir, exist_ok=True)
             f = h5py.File(self.out_dir + self.name + ".h5", 'w')
             f["Trust"] = self.get_adjacency_trust_matrix()
             f["Link"] = self.get_adjacency_link_matrix()
+            f["Interaction"] = self.max_inter
+            save_parameters(self.parameters, out)
         elif self.save_mode != "Off":
             raise ValueError("The 'Save mode' parameter used is not handled")
 
@@ -261,40 +313,6 @@ class Network:
                 link_adjacency_matrix[i, vend.index] = True
 
         return link_adjacency_matrix       
-
-    def generate_output_name(self, seed):
-        """Generate a name that represent uniquely this network
-        format: '<Heurisitc>_<Distribution>_I<Init>_L<Link minimum>_C<Cognitive capacity>_S<Size>_T<Temperature>_<seed>
-        distribution format: "Envious: 0.3" -> E3"""
-        name = ""
-        name += self.parameters["Heuristic"]
-        name += "_"
-        # distribution
-        distribution = ""
-        keys = list(self.parameters["Strategy distributions"].keys())
-        keys = sorted(keys)
-        for key in keys:
-            distribution += key[0] + str(self.parameters["Strategy distributions"][key])[2::]
-        name += distribution
-        
-        # other
-        name += "_"
-        if "Number of groups" in self.parameters and self.parameters["Init"] == "Groups":
-            name += str(self.parameters["Number of groups"])
-        name += self.parameters["Init"]
-        name += "_"
-        name += "L" + str(self.min_trust) + "_"
-        name += "C" + str(self.cognitive_capa) + "_"
-        name += "S" + str(self.size) + "_"
-        name += "T" + str(self.temp)
-
-        if seed is None:
-            return name
-        
-        return name + "_" + str(seed)
-
-
-
 
 """Vertex class for handling people"""
 
@@ -346,6 +364,9 @@ class Vertex:
         if other not in self.link and self.trust_in(other) >= self.min_trust:
             self.create_link(other)
             oper.add_link(self.index, other.index)
+        if other in self.link and self.trust_in(other) < self.min_trust:
+            self.remove_link(other)
+            oper.remove_link(self.index, other.index)
 
         if new_load > self.capacity:
             diff = new_load - self.capacity

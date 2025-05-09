@@ -72,13 +72,13 @@ class OperationStack:
         if self.activated:
             self.iter_number += 1
 
-    def save(self, dir_path):
+    def save(self, dir_path, reload_context=False):
         """Save the stack in a folder"""
         os.makedirs(dir_path, exist_ok=True)       
         df = pd.DataFrame(self.stacks)
         df.to_csv(dir_path + "stack.csv", index=False)
 
-        if self.trust is not None and self.link is not None:
+        if self.trust is not None and self.link is not None and not reload_context:
             f = h5py.File(dir_path + "init.h5", 'w')
             f["Trust"] = self.trust
             f["Link"] = self.link

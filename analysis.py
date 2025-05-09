@@ -42,7 +42,7 @@ def histogram(trust_adjacency_matrix, parameters, bins=None):
 
     return phenotype_mean
 
-def measure(quantity, trust_adjacency_matrix, link_adjacency_matrix, parameters, random=False, full=False,**rand_kwargs):
+def measure(quantity, trust_adjacency_matrix, link_adjacency_matrix, parameters, random=False,**rand_kwargs):
     """Unified method for measurement
     Quantity among: "Asymmetry", "Individual asymmetry", "Saturation rate", "Number of link"
     WARNING: randomized only work for measures on **links**"""
@@ -54,7 +54,7 @@ def measure(quantity, trust_adjacency_matrix, link_adjacency_matrix, parameters,
             },
         "Individual asymmetry": {
             "func": measure_individual_asymmetry,
-            "param": [link_adjacency_matrix, full]
+            "param": [link_adjacency_matrix]
             },
         "Saturation rate": {
             "func": measure_saturation_rate,
@@ -224,7 +224,6 @@ def compute_xhi_mean(trust_adjacency_matrix, parameters, ph_selector="Global"):
         xhi[i] += xhi[i-1]
     
     return xhi
-
 
 def compute_randomized(link_adjacency_matrix, mode, mc_iter=10):
     """Return a randomised version of the network respecting certain conditions regarding the mode chose:

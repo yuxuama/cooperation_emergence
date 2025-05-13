@@ -11,7 +11,7 @@ formation problem into that context. The other ingredient of the model is the li
   - `"Stack"`: save with `OperationStack` structure implemented in `operation.py`
   - `"Last"`: save only the final state in a `.h5` file
   - `"Off"`: don't save
-- Seed: specific sequence to add at the end of the name of the file
+- Seed (number): specific sequence to add at the end of the name of the file
 - Verbose (optional: default=True): if True display information when the network is runned
 
 **Initial state**
@@ -19,10 +19,7 @@ formation problem into that context. The other ingredient of the model is the li
   - `"Empty"`: no trust values
   - `"Random"`: random trust values
   - `"Groups"`: create fully connected disjoint groups
-  - `"Reload"`: resume simulation from a previous one
 - Number of groups (optional): Number of groups when Init is `"Groups"`. Default take the biggest size of group possible according to other parameters such as Size and Cognitive capacity
-- Reload directory (optional): Directory where is the previous simulation
-- Reload seed (optional): Seed of the previous simulation if needed 
 
 **Model parameters**
 - Community size: number of agent in the simulation

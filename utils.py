@@ -14,10 +14,40 @@ def parse_parameters(yaml_file):
     stream = open(yaml_file, 'r')
     return safe_load(stream)
 
-def save_parameters(data, dir_path, prefix=""):
+def save_parameters(parameters, dir_path, prefix=""):
     """Save the parameters represented by `data` in the `dir_path` directory"""
     stream = open(dir_path + prefix + "parameters.yaml", 'w')
-    dump(data, stream=stream, default_flow_style=False)
+    dump(parameters, stream=stream, default_flow_style=False)
+
+def save_parameters_in_hdf5(parameters, hdf5_file: h5py.File):
+    """Save the parameters `parameters` in the HDF5 file `hdf5_file` (must be of type h5py.File)"""
+    pgroup = hdf5_file.create_group("Parameters", track_order=True)
+    for key, value in parameters.items():
+        if key != "Strategy distributions":
+            pgroup[key] = value
+    strat_subgroup = pgroup.create_group("Strategy distributions")
+    for key, value in parameters["Strategy distributions"].items():
+        strat_subgroup[key] = value
+
+def extract_parameters_from_hdf5(filepath):
+    """Extract the parameters from the HDF5 file at `filepath`"""
+    parameters = {}
+    string_keys = {"Heuristic", "Init", "Output directory", "Save mode"}
+    hdf5_file = h5py.File(filepath)
+    grp = hdf5_file["Parameters"]
+    for p in grp.keys():
+        if p != "Strategy distributions":
+            if p in string_keys:
+                parameters[p] = grp.get(p)[()].decode("ascii")
+            else:
+                parameters[p] = grp.get(p)[()]
+    subgrp = grp["Strategy distributions"]
+    strategy_distrib = {}
+    for ph in subgrp.keys():
+        strategy_distrib[ph] = subgrp.get(ph)[()]
+    parameters["Strategy distributions"] = strategy_distrib
+
+    return parameters
 
 def print_parameters(parameters):
     """Print the parameters extracted from a yaml file"""
@@ -142,6 +172,16 @@ def list_all_hdf5(dirpath):
         if files[i].endswith(".h5"):
             h5_files.append(files[i])
     return h5_files
+
+def proceed(text):
+    """Ask if want to proceed"""
+    print("Warning: ", text)
+    print()
+    proceed = input("Proceed ? [y]/n ")
+    if proceed == "y" or proceed == "":
+        return True
+    print("Aborting process")
+    return False
 
 """INIT functions"""
 

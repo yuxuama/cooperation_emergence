@@ -6,11 +6,11 @@ Output directory: "./out/"
 # Among "Stack" (using OperationStack), "Last" (Only final state), "Freq" (TODO), "Off" (No save)
 Save mode: "Stack"
 Verbose: True # Default True
+# "Seed" must be a number
 
 # Initial condition
-# Among "Empty", "Random", "Groups" and "Reload"
+# Among "Empty", "Random", "Groups"
 # If "Groups" an additional parameter "Number of groups" must be added (default is 1)
-# If "Reload" a "Reload directory" can be defined as well as a "Reload seed"
 Init: "Empty"
 
 # Model parameters

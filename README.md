@@ -49,7 +49,8 @@ from utils import parse_parameters
 yaml_file = r"<path to yaml file>"
 
 parameters = parse_parameters(yaml_file) # Load parameters from the file
-net = Network(parameters) # Define the Network object
+net = Network() # Define the Network object
+net.init_with_parameters(parameters) # Init simulation parameters
 net.play() # Run the simulation
 ```
 

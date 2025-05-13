@@ -24,9 +24,9 @@ def print_parameters(parameters):
     for key, values in parameters.items():
         print("..", key, ": ", values)
 
-def generate_output_name_from_parameters(parameters, seed):
+def generate_output_name_from_parameters(parameters, postfix):
     """Generate a name that represent uniquely this network
-    format: '<Heurisitc>_<Distribution>_I<Init>_L<Link minimum>_C<Cognitive capacity>_S<Size>_T<Temperature>_<seed>
+    format: '<Heurisitc>_<Distribution>_I<Init>_L<Link minimum>_C<Cognitive capacity>_S<Size>_T<Temperature>_<postfix>
     distribution format: "Envious: 0.3" -> E3"""
     name = ""
     name += parameters["Heuristic"]
@@ -36,7 +36,11 @@ def generate_output_name_from_parameters(parameters, seed):
     keys = list(parameters["Strategy distributions"].keys())
     keys = sorted(keys)
     for key in keys:
-        distribution += key[0] + str(parameters["Strategy distributions"][key])[2::]
+        prop = str(parameters["Strategy distributions"][key])
+        if len(prop) < 2:
+            distribution += key[0] + prop
+        else:
+            distribution += key[0] + prop[2::]
     name += distribution
     
     # other
@@ -50,10 +54,10 @@ def generate_output_name_from_parameters(parameters, seed):
     name += "S" + str(parameters["Community size"]) + "_"
     name += "T" + str(parameters["Temperature"])
 
-    if seed is None:
+    if postfix == "":
         return name
     
-    return name + "_" + str(seed)
+    return name + "_" + str(postfix)
 
 def model_parameters_change(old_parameters, parameters):
     """Compare the model parameters 'Link minimum', 'Cognitive capacity' and 'Temperature'"""

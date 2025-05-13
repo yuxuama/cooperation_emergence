@@ -32,9 +32,6 @@ class Network:
         self.cognitive_capa = parameters["Cognitive capacity"]
         self.strategy_distrib = parameters["Strategy distributions"]
         self.out_dir = parameters["Output directory"]
-        if "Seed" in parameters:
-            seed = parameters["Seed"]
-        self.name = generate_output_name_from_parameters(self.parameters, seed)
 
         self.phenotypes = list(self.strategy_distrib.keys())
         self.distribution_grid = [0] # Used to initialized populations of each phenotypes according to parameters.
@@ -53,6 +50,7 @@ class Network:
 
         # Initializing network structure
         self.initialize_structure()
+        self.name = self.generate_name(seed)
     
     def create_vertex(self, index):
         """Add a person into the simulation"""
@@ -124,6 +122,17 @@ class Network:
     def reset(self, new_parameters, new_seed=None):
         self.__init__(new_parameters, new_seed)
     
+    def generate_name(self, seed):
+        """Generate name of the simulation based on the parameters"""
+        postfix = ""
+        if "Seed" in self.parameters:
+            seed = self.parameters["Seed"]
+        if self.save_mode == "Last":
+            postfix += str(self.max_inter)
+            if seed is not None:
+                postfix += "_" + str(seed)
+        return generate_output_name_from_parameters(self.parameters, postfix)
+
     def initialize_structure(self):
         """initialize the structure of the network according to the parameters"""
         mode = self.parameters["Init"]
@@ -199,7 +208,7 @@ class Network:
                 f = h5py.File(loc + old_name + ".h5")
             except Exception as err:
                 raise Exception("No file was found in '{0}' with name '{1}': Impossible to reload \n " \
-                "You may have forgotten the 'Seed' parameters or the 'Reload directory' parameter".format(loc, old_name))
+                "You may have forgotten the 'Reload seed' parameters or the 'Reload directory' parameter".format(loc, old_name))
             t = f.get("Trust")
             self.set_adjacency_trust_matrix(t)
             save_parameters(old_parameters, self.out_dir, prefix="old_")
@@ -273,13 +282,15 @@ class Network:
     def save(self):
         """Handle save of the network"""
         if self.save_mode == "Stack":
-            print("Saving in: ", self.out_dir + self.name)
+            if self.verbose:
+                print("Saving in: ", self.out_dir + self.name)
             out = self.out_dir + self.name + "/"
             self.oper.save(out)
             save_parameters(self.parameters, out)
         elif self.save_mode == "Last":
-            print("Saving in: ", self.out_dir)
-            print("Name is: ", self.name)
+            if self.verbose:
+                print("Saving in: ", self.out_dir)
+                print("Name is: ", self.name)
             os.makedirs(self.out_dir, exist_ok=True)
             f = h5py.File(self.out_dir + self.name + ".h5", 'w')
             f["Trust"] = self.get_adjacency_trust_matrix()

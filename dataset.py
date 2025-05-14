@@ -55,14 +55,26 @@ class Dataset:
     def load_from_file(self, filename):
         pass
 
+    def add_id(self, id, data_dict={}):
+        self.size += 1
+        if id in self.data:
+            print("WARNING: Erasing previous data")
+        self.data[id] = data_dict
+    
+    def add_field_in_id(self, id, key, value):
+        if not id in self.data:
+            self.add_id(id, {key: value})
+            return
+        self.data[id][key] = value
+
     def get(self, id, fields="All"):
         query = Dataset(id)
         if type(fields) is str:
             if fields == "All":
-                query.data = self.data[id]
+                query.add_id(id, self.data[id])
                 return query
             if fields in self.data[id]:
-                query.data[fields] = self.data[id][fields]
+                query.add_field_in_id(id, fields, self.data[id][fields])
                 return query
             raise KeyError("Unknown field must be in {0}".format(self.data[id].keys()))
         
@@ -73,16 +85,13 @@ class Dataset:
         
         for field in iterator:
             if field in self.data[id]:
-                query.data[field] = self.data[id][field]
+                query.add_field_in_id(id, field, self.data[id][field])
             else:
                 raise KeyError("Unknown field must be in {0}".format(self.data[id].keys()))
         return query
 
     def get_all(self, fields="All"):
-        query = Dataset(self.name + str(fields))
-        for i in range(self.size):
-            query.data[i] = self.get(i, fields).data
-        return query
+        pass
 
     def aggregate(self, fields):
         query = Dataset("agregated " + self.name + str(fields))
@@ -113,5 +122,17 @@ class Dataset:
 
 class DatasetGroup:
 
-    def __init__(self):
+    def __init__(self, name):
+        self.name = name
+        self.size = 0
+        self.containt = {}
+    
+    def add_dataset(self, dataset):
+        self.containt[dataset.name] = dataset
+    
+    def get(self, id, selector):
         pass
+
+    def get_all(self, selector):
+        pass
+

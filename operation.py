@@ -97,7 +97,6 @@ class OperationStack:
         except Exception as err:
             print("Unexpected {0} of type {1}. This may be because the dir is not containing a Stack structure".format(err, type(err)))
 
-
     def set_matrices_from_file(self, filepath):
         """set the link and trust adjacency matrices stored in the hdf5 file with path `filepath`"""
         f = h5py.File(filepath, 'r')
@@ -174,6 +173,32 @@ class OperationStack:
                 self.amend_one()
         
         return self.trust, self.link
+    
+    def copy_until(self, niter):
+        """Copy stack until the interaction number `niter`"""
+        if niter == -1:
+            return self
+        elif niter > self.iter_number:
+            raise AttributeError("Impossible to copy because number of interaction is to high")
+        
+        new_stack = OperationStack()
+        new_stack.iter_number = niter
+        new_stack.trust = self.trust
+        new_stack.link = self.link
+        read_pointer = 0
+        while self.stacks["Interaction number"][read_pointer] < niter:
+            iter_number = self.stacks["Interaction number"][read_pointer]
+            name = self.stacks["Operation name"][read_pointer]
+            i = self.stacks["i"][read_pointer]
+            j = self.stacks["j"][read_pointer]
+            value = self.stacks["Value"][read_pointer]
+            new_stack.stacks["Interaction number"].append(iter_number)
+            new_stack.stacks["Operation name"].append(name)
+            new_stack.stacks["i"].append(i)
+            new_stack.stacks["j"].append(j)
+            new_stack.stacks["Value"].append(value)
+            read_pointer += 1
+        return new_stack
 
     def __len__(self):
         return self.iter_number + 1

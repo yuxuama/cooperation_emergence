@@ -70,6 +70,7 @@ class Network:
         self.out_dir = self.parameters["Output directory"]
         if "Verbose" in self.parameters:
             self.verbose = self.parameters["Verbose"]
+        self.name = self.generate_name(self.seed)
 
         # Create vertices
         self.create_all_vertices()
@@ -79,10 +80,11 @@ class Network:
         t = h5file["Trust"]
         self.set_trust_adjacency_matrix(t)
 
-    def reload_with_stack(self, stackdir):
+    def reload_with_stack(self, stackdir, inter=-1):
         """Initialize the Graph object with the OperationStack saved in `stackdir`"""
         # Load stack
         self.oper = OperationStack(stackdir)
+        self.oper = self.oper.copy_until(inter)
         self.oper.activated = False
 
         # Initialize properties
@@ -91,12 +93,14 @@ class Network:
         self.out_dir = self.parameters["Output directory"]
         if "Verbose" in self.parameters:
             self.verbose = self.parameters["Verbose"]
+        self.name = self.generate_name(self.seed)
         
         # Create vertices
         self.create_all_vertices()
 
         # Initializing structure
         t, _ = self.oper.resolve(-1)
+        self.parameters[p_niter] = self.oper.read_interaction - 1
         self.set_trust_adjacency_matrix(t)
     
     def set_save_mode(self, new_save_mode):
@@ -189,6 +193,7 @@ class Network:
             seed = self.parameters["Seed"]
         elif self.seed is not None:
             seed = self.seed
+            self.parameters["Seed"] = seed
         if self.parameters["Save mode"] == "Last":
             postfix += str(self.parameters[p_niter])
             if seed is not None:
@@ -325,7 +330,7 @@ class Network:
             if self.verbose:
                 print("Saving in: ", self.out_dir + self.name)
             out = self.out_dir + self.name + "/"
-            self.oper.save(out)
+            self.oper.save(out, reload_context=self._reload_context)
             save_parameters(self.parameters, out)
         elif self.parameters["Save mode"] == "Last":
             os.makedirs(self.out_dir, exist_ok=True)

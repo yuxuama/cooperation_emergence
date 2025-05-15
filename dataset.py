@@ -6,14 +6,25 @@ from networkx import from_numpy_array, betweenness_centrality
 from analysis import measure_etas_from_xhi, measure_individual_asymmetry
 import numpy as np
 
+
+################################################################################################
+# Dataset utils
+################################################################################################
+
+
 def selector_parser(selector):
     """Parse selector for more selection freedom (useful ?)"""
     pass
 
+
+################################################################################################
+# Dataset class
+################################################################################################
+
 class Dataset:
 
     def __init__(self, name="Dataset", niter=0):
-        self.name = str(name)
+        self.name = name
         self.size = 0
         self.data = {}
         self.niter = niter
@@ -80,12 +91,28 @@ class Dataset:
             self.add_id(id, {key: value})
             return
         self.data[id][key] = value
+    
+    def modify_field_in_id(self, id, key, new_value, mode="="):
+        """Modify the field `field` for id `id` with `new_value
+        Possible modes: `"="`, `"+"`, `"-"`, `"*"`, `"/"`"""
+        if mode == "=":
+            self.data[id][key] = new_value
+        elif mode == "+":
+            self.data[id][key] += new_value
+        elif mode == "-":
+            self.data[id][key] -= new_value
+        elif mode == "*":
+            self.data[id][key] *= new_value
+        elif mode == "/":
+            self.data[id][key] /= new_value
 
     def get_item(self, id, query="All"):
         """Get item of id `id` in the dataset matching `query` requirment"""
         output = {}
         if type(query) is str:
             if query == "All":
+                if "_value" in self.data[id] and len(self.data[id]) == 1:
+                    return self.data[id]["_value"]
                 output = self.data[id]
                 return output
             if query in self.data[id]:
@@ -136,7 +163,7 @@ class Dataset:
                     dt = dtg.add_dataset(dt)
                 else:
                     dt = dtg.get_sub(key)
-                dt.add(id, value)
+                dt.add(id, {"_value": value})
         return dtg
 
     def group_by(self, selector):
@@ -164,7 +191,7 @@ class Dataset:
         return self.data.keys()
 
     def __str__(self):
-        return "Dataset '" + self.name + "' with data: " + 10 * "-" + "\n" + str(self.data)
+        return "Dataset '" + str(self.name) + "' with data: " + 10 * "-" + "\n" + str(self.data)
 
 
 class DatasetGroup:
@@ -257,3 +284,85 @@ class DatasetGroup:
             string += str(name) + "\n"
             string += str(self.subs[name]) + "\n"
         return string
+    
+################################################################################################
+# Dataset measure
+################################################################################################
+
+def measure_frequency_diadic_pattern(link_adjacency_matrix, phenotype_table, niter):
+    """Measure the frequency of each diadic pattern"""
+    pattern_freq = Dataset("Diadic", niter)
+    size = link_adjacency_matrix.shape[0]
+    for i in range(size):
+        pattern_freq.add(i, {".": 0, "->": 0, "<-": 0,"--": 0, "Phenotype": phenotype_table[i]})
+    for i in range(size):
+        for j in range(i+1, size):
+            if link_adjacency_matrix[i, j] == link_adjacency_matrix[j, i]:
+                if link_adjacency_matrix[i, j] > 0:
+                    pattern_freq.modify_field_in_id(i, "--", 1, mode="+")
+                    pattern_freq.modify_field_in_id(j, "--", 1, mode="+")
+                else:
+                    pattern_freq.modify_field_in_id(i, ".", 1, mode="+")
+                    pattern_freq.modify_field_in_id(j, ".", 1, mode="+")
+            else:
+                if link_adjacency_matrix[i, j] > 0:
+                    pattern_freq.modify_field_in_id(i, "->", 1, mode="+")
+                    pattern_freq.modify_field_in_id(j, "<-", 1, mode="+")
+                else:
+                    pattern_freq.modify_field_in_id(j, "->", 1, mode="+")
+                    pattern_freq.modify_field_in_id(i, "<-", 1, mode="+")
+    return pattern_freq
+
+triadic_skeleton_global = {
+    "000000": {"Number": 0, "Type": "Diadic", "Transitive": False},
+    "001010": {"Number": 0, "Type": "Diadic", "Transitive": False},
+    "011011": {"Number": 0, "Type": "Diadic", "Transitive": False},
+    "002110": {"Number": 0, "Type": "Triadic", "Transitive": False},
+    "110002": {"Number": 0, "Type": "Triadic", "Transitive": False},
+    "011101": {"Number": 0, "Type": "Triadic", "Transitive": False},
+    "012210": {"Number": 0, "Type": "Triadic", "Transitive": True},
+    "111111": {"Number": 0, "Type": "Triadic", "Transitive": False},
+    "012111": {"Number": 0, "Type": "Triadic", "Transitive": False},
+    "112121": {"Number": 0, "Type": "Triadic", "Transitive": False},
+    "022211": {"Number": 0, "Type": "Triadic", "Transitive": True},
+    "211022": {"Number": 0, "Type": "Triadic", "Transitive": False},
+    "111012": {"Number": 0, "Type": "Triadic", "Transitive": False},
+    "112112": {"Number": 0, "Type": "Triadic", "Transitive": False},
+    "122212": {"Number": 0, "Type": "Triadic", "Transitive": True},
+    "222222": {"Number": 0, "Type": "Triadic", "Transitive": True}
+}
+
+def complex_degree(i, j, k, link_adjacency):
+    """Return complex degree of `i` in the triangle drawn by (i,j,k)"""
+    out_deg = link_adjacency[i, j] + link_adjacency[i, k]
+    in_deg = link_adjacency[j, i] + link_adjacency[k, i]
+    return out_deg, in_deg
+
+def triadic_order(tuple):
+    """For recognizing triadic pattern using tuple sort"""
+    return tuple[0] + tuple[1], tuple[0]
+
+def get_id_from_degrees(deg_seq):
+    """Get the id of the triadic pattern"""
+    id = ""
+    for i in range(2):
+        for j in range(3):
+            id += str(deg_seq[j][i])
+    return id
+
+def measure_global_frequency_triadic_pattern(link_adjacency_matrix, niter):
+    """Measure the frequency of each triadic pattern"""
+    pattern_freq = Dataset("Triadic", niter)
+    for key, dt_dict in triadic_skeleton_global.items():
+        pattern_freq.add(key, dt_dict.copy())
+    size = link_adjacency_matrix.shape[0]
+    for i in range(size):
+        for j in range(i+1, size):
+            for k in range(j+1, size):
+                deg_seq = []
+                deg_seq.append(complex_degree(i, j, k, link_adjacency_matrix))
+                deg_seq.append(complex_degree(j, i, k, link_adjacency_matrix))
+                deg_seq.append(complex_degree(k, j, i, link_adjacency_matrix))
+                triangle_id = get_id_from_degrees(sorted(deg_seq, key=triadic_order))
+                pattern_freq.modify_field_in_id(triangle_id, "Number", 1, mode="+")
+    return pattern_freq

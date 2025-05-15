@@ -72,10 +72,61 @@ def plot_hist_by_phenotype(dataset, quantity, **plot_kwargs):
             else:
                 data = dta.get_item(possible_phenotype[index]).get_item(quantity).get_all_item()
                 title = possible_phenotype[index]
-            ax[selector].hist(list(data.values()))
+            ax[selector].hist(list(data.values()), **plot_kwargs)
             ax[selector].set_title(title)
     fig.suptitle("Histogram of {0} @ inter {1}".format(quantity, dataset.niter))
     return ax
+
+def plot_diadic_pattern(dataset, **plot_kwargs):
+    """Plot bar graph with diadic pattern repartition per phenotype"""
+    dta = dataset.group_by("Phenotype").aggregate((".", "<-", "->", "--"))
+    global_dta = dataset.aggregate((".", "<-", "->", "--"))
+    possible_phenotype = list(dta.keys())
+    fig_layout = [(1, 2), (1, 3), (2, 3), (2, 3), (2, 3)]
+    layout = fig_layout[dta.size - 1]
+    fig, ax = plt.subplots(layout[0], layout[1], figsize=(10, 6))
+    for i in range(layout[0]):
+        for j in range(layout[1]):
+            if layout[0] == 1:
+                selector = j
+            else:
+                selector = (i, j)
+            index = i * layout[1] + j
+            if index == dta.size:
+                no_link = sum(global_dta.get_item(".").get_all_item().values())
+                in_link = sum(global_dta.get_item("<-").get_all_item().values())
+                out_link = sum(global_dta.get_item("->").get_all_item().values())
+                bi_link = sum(global_dta.get_item("--").get_all_item().values())
+                data = [no_link, in_link, out_link, bi_link]
+                title = "Global"
+            else:
+                no_link = sum(dta.get_item(possible_phenotype[index]).get_item(".").get_all_item().values())
+                in_link = sum(dta.get_item(possible_phenotype[index]).get_item("<-").get_all_item().values())
+                out_link = sum(dta.get_item(possible_phenotype[index]).get_item("->").get_all_item().values())
+                bi_link = sum(dta.get_item(possible_phenotype[index]).get_item("--").get_all_item().values())
+                data = [no_link, in_link, out_link, bi_link]
+                title = possible_phenotype[index]
+            ax[selector].bar(["0", "<--", "-->", "<->"], data, **plot_kwargs)
+            ax[selector].set_title(title)
+    fig.suptitle("Diadic pattern @ iter {}".format(dataset.niter))
+    return ax
+
+def plot_bar_diadic_pattern(dataset, **plot_kwargs):
+    dta = dataset.group_by("Phenotype").aggregate((".", "<-", "->", "--"))
+    possible_phenotype = list(dta.keys())
+    link_type = ["0", "<--", "-->", "<->"]
+    bottom = np.zeros(4)
+    ax = plt.subplot(1, 1, 1)
+    for i in range(len(possible_phenotype)):
+        no_link = sum(dta.get_item(possible_phenotype[i]).get_item(".").get_all_item().values())
+        in_link = sum(dta.get_item(possible_phenotype[i]).get_item("<-").get_all_item().values())
+        out_link = sum(dta.get_item(possible_phenotype[i]).get_item("->").get_all_item().values())
+        bi_link = sum(dta.get_item(possible_phenotype[i]).get_item("--").get_all_item().values())
+        data = np.array([no_link, in_link, out_link, bi_link])
+        ax.bar(link_type, data, bottom=bottom, label=possible_phenotype[i], **plot_kwargs)
+        bottom += data
+    ax.set_title("Diadic pattern @ inter {}".format(dataset.niter))
+    plt.legend()
 
 def plot_evolution(ax, quantity, oper, start, end, step, parameters, **kwargs):
     x = np.arange(start, end, step)

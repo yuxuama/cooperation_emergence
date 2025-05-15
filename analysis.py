@@ -15,6 +15,8 @@ from scipy.optimize import curve_fit
 # Measure from dataset
 ######################################################################################
 
+def measure_global_from_dataset(dataset, quantity, operator):
+    pass
 
 ######################################################################################
 # Measure general
@@ -123,21 +125,13 @@ def measure_link_asymmetry(link_adjacency_matrix):
 def measure_individual_asymmetry(link_adjacency_matrix, full=False):
     """Return the proportion of link that are asymmetrical per vertex"""
     n = link_adjacency_matrix.shape[0]
-    number_of_link = np.sum(link_adjacency_matrix, axis=1)
     number_of_asymmetric = np.zeros(n)
-
     for i in range(n):
         for j in range(i+1, n):
             if link_adjacency_matrix[i, j] != link_adjacency_matrix[j, i]:
-                if link_adjacency_matrix[i, j] > 0:
                     number_of_asymmetric[i] += 1
-                else:
                     number_of_asymmetric[j] += 1
-    for i in range(n):
-        if number_of_link[i] == 0:
-            number_of_asymmetric[i] = 0
-        else:
-            number_of_asymmetric[i] /= number_of_link[i]
+    number_of_asymmetric = number_of_asymmetric / n
     if full:
         return number_of_asymmetric
     return np.median(number_of_asymmetric)
@@ -428,4 +422,3 @@ if __name__ == "__main__":
     #print(in_degrees == np.sum(net_rand, axis=0))
     #print(out_degrees == np.sum(net_rand, axis=1))
     #print(measure("Individual asymmetry", net_rand, net_rand, 0, niter=100, mode="i&&o", mc_iter=10))
-

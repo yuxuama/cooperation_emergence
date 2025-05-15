@@ -12,14 +12,16 @@ def selector_parser(selector):
 
 class Dataset:
 
-    def __init__(self, name="Dataset"):
+    def __init__(self, name="Dataset", niter=0):
         self.name = str(name)
         self.size = 0
         self.data = {}
+        self.niter = niter
     
     def init_with_network(self, net: Network):
         """Init Dataset with all local values of the network"""
         self.size = net.parameters["Community size"]
+        self.niter = net.parameters["Number of interaction"]
         vertices = net.vertices
         link_adjacency = net.get_link_adjacency_matrix()
         trust_adjacency = net.get_trust_adjacency_matrix()
@@ -130,7 +132,7 @@ class Dataset:
             sub_data = data[id]
             for key, value in sub_data.items():
                 if not dtg.is_in_group(key):
-                    dt = Dataset(key)
+                    dt = Dataset(key, self.niter)
                     dt = dtg.add_dataset(dt)
                 else:
                     dt = dtg.get_sub(key)
@@ -143,7 +145,7 @@ class Dataset:
         for i in self.data.keys():
             if selector in self.data[i]:
                 if not dtg.is_in_group(self.data[i][selector]):
-                    dt = Dataset(self.data[i][selector])
+                    dt = Dataset(self.data[i][selector], self.niter)
                     dt = dtg.add_dataset(dt)
                 else:
                     dt = dtg.get_sub(self.data[i][selector])
@@ -152,7 +154,7 @@ class Dataset:
 
     def copy(self):
         """Copy object"""
-        copyds = Dataset(self.name)
+        copyds = Dataset(self.name, self.niter)
         for i in self.data.keys():
             copyds.add(i, self.get_item(i).copy())
         return copyds
@@ -240,6 +242,7 @@ class DatasetGroup:
     def copy(self):
         """Deep copy the object"""
         copy_dtg = DatasetGroup(self.name)
+        copy_dtg.size = self.size
         for name, content in self.subs.items():
             copy_dtg.subs[name] = content.copy()
         return copy_dtg

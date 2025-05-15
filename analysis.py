@@ -9,6 +9,17 @@ from tqdm import tqdm
 from scipy.optimize import newton
 from numba import njit 
 from numba.typed.typedlist import List
+from scipy.optimize import curve_fit
+
+######################################################################################
+# Measure from dataset
+######################################################################################
+
+
+######################################################################################
+# Measure general
+######################################################################################
+
 
 def histogram(trust_adjacency_matrix, parameters, bins=None):
     """Return histogram of the weight distribution for each phenotype and the average distribution in log scale"""
@@ -42,7 +53,7 @@ def histogram(trust_adjacency_matrix, parameters, bins=None):
 
     return phenotype_mean
 
-def measure(quantity, trust_adjacency_matrix, link_adjacency_matrix, parameters, random=False,**rand_kwargs):
+def measure_global(quantity, trust_adjacency_matrix, link_adjacency_matrix, parameters, random=False,**rand_kwargs):
     """Unified method for measurement
     Quantity among: "Asymmetry", "Individual asymmetry", "Saturation rate", "Number of link"
     WARNING: randomized only work for measures on **links**"""
@@ -147,6 +158,16 @@ def measure_number_of_link(link_adjacency_matrix):
     """Return the average and sigma of the distribution of number of out links per agent"""
     number_out_links = np.sum(link_adjacency_matrix, axis=1)
     return np.mean(number_out_links), np.std(number_out_links, ddof=number_out_links.size - 1)
+
+def measure_etas_from_xhi(i, trust_adjacency_matrix, parameters):
+    """Measure the value of the eta parameters for agent `i` in the network
+    Return: eta, t and xhi(t)"""
+    xhi = compute_xhi(i, trust_adjacency_matrix, parameters)
+    size = xhi.size
+    t_norm = np.arange(size) / (size - 1)
+    model = lambda j, eta: (np.exp(eta * j) - 1) / (np.exp(eta) - 1)
+    popt, _ = curve_fit(model, t_norm, xhi)
+    return popt[0]
 
 def estimate_etas_with_L(trust_adjacency_matrix, link_adjacency_matrix, parameters):
     """Estimate the eta parameter defined in https://doi.org/10.1038/s41598-022-06066-1

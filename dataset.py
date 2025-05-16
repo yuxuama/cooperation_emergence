@@ -4,6 +4,7 @@ Implement the dataset structure
 from graph import Network
 from networkx import from_numpy_array, betweenness_centrality
 from analysis import measure_etas_from_xhi, measure_individual_asymmetry
+from utils import get_vertex_distribution
 import numpy as np
 
 
@@ -65,18 +66,48 @@ class Dataset:
 
             # Adding field to dataset data
             self.data[vertices[i].index] = i_data
+        return self
 
     def init_with_stack(self, stackdir):
         """Initialize Dataset with a Stack"""
         net = Network()
         net.reload_with_stack(stackdir)
-        self.init_with_network(net)
+        return self.init_with_network(net)
 
     def init_with_hdf5(self, filepath):
         """Initialize Dataset with a HDF5 file"""
         net = Network()
         net.reload_with_hdf5(filepath)
-        self.init_with_network(net)
+        return self.init_with_network(net)
+
+    def init_with_matrices(self, link_adjacency, trust_adjacency, parameters, niter):
+        """Initialize structure for local measurement only with matrices and parameters"""
+        self.size = parameters["Community size"]
+        self.niter = niter
+        kxgraph_link = from_numpy_array(link_adjacency)
+        centralities = betweenness_centrality(kxgraph_link)
+        out_degrees = np.sum(link_adjacency, axis=1)
+        in_degrees = np.sum(link_adjacency, axis=0)
+        asymmetries = measure_individual_asymmetry(link_adjacency, full=True)
+        phenotype_table = get_vertex_distribution(parameters)
+        for i in range(self.size):
+            i_data = {}
+            # Phenotype
+            i_data["Phenotype"] = phenotype_table[i]
+            # Load
+            i_data["Load"] = np.sum(trust_adjacency[i]) / parameters["Cognitive capacity"]
+            # Outdegree
+            i_data["Out degree"] = out_degrees[i]
+            # Indegree
+            i_data["In degree"] = in_degrees[i]
+            # Centrality
+            i_data["Centrality"] = centralities[i]
+            # Asymmetry
+            i_data["Asymmetry"] = asymmetries[i]
+            # Eta        
+            i_data["Eta"] = measure_etas_from_xhi(i, trust_adjacency, parameters)
+            # Adding field to dataset data
+            self.data[i] = i_data
 
     def add(self, id, data_dict={}):
         """add field in dataset"""

@@ -140,22 +140,24 @@ def readable_adjacency(adjacency_matrix=np.ndarray):
 def get_vertex_distribution(parameters):
     """Give the link vertex index - vertex phenotype according to the parameters"""
     strategy_distrib = parameters["Strategy distributions"]
-    size = parameters["Community size"]
-    phenotypes = list(strategy_distrib.keys())
-    
+    possible_phenotypes = list(strategy_distrib.keys())
     distribution_grid = [0] # Used to initialized populations of each phenotypes according to parameters.
     for p in strategy_distrib.values():
         distribution_grid.append(distribution_grid[-1] + p)
-    distribution_grid = size * np.array(distribution_grid)
-
-    pointer = 0
-    table = ["" for _ in range(size)]
-    for i in range(size):
-        while i > distribution_grid[pointer]:
-            pointer += 1
-        table[i] = phenotypes[pointer-1]
+    distribution_grid = parameters["Community size"] * np.array(distribution_grid)
+        
+    # Creating vertices
+    phenotypes_table = ["" for i in range(parameters["Community size"])]
+    d_pointer = 1
+    ph_pointer = 0
+    for i in range(parameters["Community size"]):
+        if i+1 > distribution_grid[d_pointer]:
+            d_pointer += 1
+            ph_pointer += 1
+        phenotype = possible_phenotypes[ph_pointer]
+        phenotypes_table[i] = phenotype
     
-    return table
+    return phenotypes_table
 
 def load_hdf5(filename):
     """Return the trust and the link matrices stored in the hdf5 file `filename`"""

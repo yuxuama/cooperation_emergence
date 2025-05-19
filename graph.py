@@ -47,7 +47,6 @@ class Network:
         self.out_dir = parameters["Output directory"]
         if "Verbose" in self.parameters:
             self.verbose = parameters["Verbose"]
-        self.name = self.generate_name(self.seed)
 
         # Create vertices with parameters
         self.create_all_vertices()
@@ -58,7 +57,7 @@ class Network:
 
         # Initializing network structure using parameters
         self.initialize_structure()
-        self.name = self.generate_name(self.seed)
+        self.name = self.generate_name()
 
     def reload_with_hdf5(self, filepath):
         """Initialize the Graph structure with the HDF5 file at `filepath`"""
@@ -70,7 +69,7 @@ class Network:
         self.out_dir = self.parameters["Output directory"]
         if "Verbose" in self.parameters:
             self.verbose = self.parameters["Verbose"]
-        self.name = self.generate_name(self.seed)
+        self.name = self.generate_name()
 
         # Create vertices
         self.create_all_vertices()
@@ -93,7 +92,7 @@ class Network:
         self.out_dir = self.parameters["Output directory"]
         if "Verbose" in self.parameters:
             self.verbose = self.parameters["Verbose"]
-        self.name = self.generate_name(self.seed)
+        self.name = self.generate_name()
         
         # Create vertices
         self.create_all_vertices()
@@ -186,14 +185,14 @@ class Network:
     def reset(self, new_seed=None):
         self.__init__(new_seed)
     
-    def generate_name(self, seed):
+    def generate_name(self):
         """Generate name of the simulation based on the parameters"""
         postfix = ""
-        if "Seed" in self.parameters:
-            seed = self.parameters["Seed"]
-        elif self.seed is not None:
+        if self.seed is not None:
             seed = self.seed
             self.parameters["Seed"] = seed
+        elif "Seed" in self.parameters:
+            seed = self.parameters["Seed"]
         if self.parameters["Save mode"] == "Last":
             postfix += str(self.parameters[p_niter])
             if seed is not None:
@@ -298,7 +297,7 @@ class Network:
             self.parameters[p_niter] *= 2
         else:
             self.parameters[p_niter] += niter
-        self.name = self.generate_name(self.seed)
+        self.name = self.generate_name()
 
         def idle(arg):
             return arg

@@ -65,6 +65,7 @@ def plot_histogram(phenotype_mean, parameters, log=False, **kwargs):
 def plot_xhi_by_phenotype(xhi_means, **plot_kwargs):
     """Plot all mean xhis for each phenotype and the corresponding eta fit"""
     possible_phenotype = list(xhi_means.keys())
+    possible_phenotype.append(possible_phenotype.pop(0))
     fig_layout = [(1, 2), (1, 3), (2, 3), (2, 3), (2, 3)]
     layout = fig_layout[len(possible_phenotype) - 2]
     fig, ax = plt.subplots(layout[0], layout[1], figsize=(8, 6))
@@ -96,7 +97,7 @@ def plot_hist_by_phenotype(dataset, quantity, **plot_kwargs):
     """Generate appropriate layour for phenotype ploting"""
     dta = dataset.group_by("Phenotype").aggregate(quantity)
     global_dta = dataset.aggregate(quantity)
-    possible_phenotype = list(dta.keys())
+    possible_phenotype = sorted(list(dta.keys()))
     fig_layout = [(1, 2), (1, 3), (2, 3), (2, 3), (2, 3)]
     layout = fig_layout[dta.size - 1]
     fig, ax = plt.subplots(layout[0], layout[1], figsize=(8, 6))
@@ -128,7 +129,7 @@ def plot_diadic_pattern(dataset, **plot_kwargs):
     """Plot bar graph with diadic pattern repartition per phenotype"""
     dta = dataset.group_by("Phenotype").aggregate((".", "<-", "->", "--"))
     global_dta = dataset.aggregate((".", "<-", "->", "--"))
-    possible_phenotype = list(dta.keys())
+    possible_phenotype = sorted(list(dta.keys()))
     fig_layout = [(1, 2), (1, 3), (2, 3), (2, 3), (2, 3)]
     layout = fig_layout[dta.size - 1]
     fig, ax = plt.subplots(layout[0], layout[1], figsize=(10, 6))
@@ -155,13 +156,13 @@ def plot_diadic_pattern(dataset, **plot_kwargs):
                 title = possible_phenotype[index]
             ax[selector].bar(["0", "<--", "-->", "<->"], data, **plot_kwargs)
             ax[selector].set_title(title)
-    ax.set_ylabel("Occurences")
+            ax[selector].set_ylabel("Occurences")
     fig.suptitle("Diadic pattern @ iter {}".format(dataset.niter))
     return ax
 
 def plot_bar_diadic_pattern(dataset, **plot_kwargs):
     dta = dataset.group_by("Phenotype").aggregate((".", "<-", "->", "--"))
-    possible_phenotype = list(dta.keys())
+    possible_phenotype = sorted(list(dta.keys()))
     link_type = ["0", "<--", "-->", "<->"]
     bottom = np.zeros(4)
     ax = plt.subplot(1, 1, 1)
@@ -177,8 +178,8 @@ def plot_bar_diadic_pattern(dataset, **plot_kwargs):
     ax.set_ylabel("Occurences")
     plt.legend()
 
-def plot_bar_triadic_pattern(triadic_dataset, **plot_kwargs):
-    data = triadic_dataset.aggregate("Number").get_item("Number").get_all_item()
+def plot_triadic_pattern(triadic_dataset, selector="Number", **plot_kwargs):
+    data = triadic_dataset.aggregate(selector).get_item(selector).get_all_item()
     triangle_names = list(data.keys())
 
     def get_image(name):
@@ -199,9 +200,50 @@ def plot_bar_triadic_pattern(triadic_dataset, **plot_kwargs):
     ax.bar(range(0, len(data)*2, 2), list(data.values()), width=1, align="center", **plot_kwargs)
     ax.tick_params(axis='x', which='both', labelbottom=False, top=False, bottom=False)
     ax.set_ylabel("Occurences")
-    ax.set_title("Triadic pattern frequency @ inter {}".format(triadic_dataset.niter))
+    if selector == "Number":
+        title = "Global"
+    else:
+        title = selector
+    ax.set_title("Triadic pattern frequency for {0} @ inter {1}".format(selector, triadic_dataset.niter))
 
     for i in range(0, len(data)*2, 2):
+        offset_image(i, triangle_names[i//2], ax)
+    
+    return ax
+
+def plot_triadic_pattern_phenotype(triadic_dataset, parameters, **plot_kwargs):
+    possible_fields = list(parameters["Strategy distributions"].keys())
+    possible_fields.append("Number")
+    data = triadic_dataset.aggregate(possible_fields)
+    triangle_names = list(data.get_item("Number").get_all_item().keys())
+
+    def get_image(name):
+        path = r"C:\Users\Matthieu\Documents\_Travail\Stages\Stage M1\Workspace\image\triadic_{}.png".format(name)
+        im = plt.imread(path)
+        return im
+
+    def offset_image(coord, name, ax):
+        img = get_image(name)
+        im = OffsetImage(img, zoom=0.2)
+        im.image.axes = ax
+        ab = AnnotationBbox(im, (coord, 0),  xybox=(0., -16.), frameon=False,
+                            xycoords='data',  boxcoords="offset points", pad=0)
+        ax.add_artist(ab)
+
+    _, ax = plt.subplots(1, 1, figsize=(8, 5))
+
+    bottom = np.zeros(16)
+    for i in range(len(possible_fields) - 1):
+        ph_data = data.get_item(possible_fields[i]).get_all_item()
+        values = np.array(list(ph_data.values())) / 3
+        ax.bar(range(0, len(ph_data)*2, 2), values, width=1, align="center", bottom=bottom, label=possible_fields[i], **plot_kwargs)
+        bottom += values
+    ax.tick_params(axis='x', which='both', labelbottom=False, top=False, bottom=False)
+    ax.set_ylabel("Occurences")
+    ax.set_title("Triadic pattern frequency @ inter {}".format(triadic_dataset.niter))
+    ax.legend()
+
+    for i in range(0, len(ph_data)*2, 2):
         offset_image(i, triangle_names[i//2], ax)
     
     return ax

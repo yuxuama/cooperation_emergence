@@ -1,11 +1,11 @@
 # YAML document with parameters of the simulation
 # Simulation parameters
 Number of interaction: 1000000
-Output directory: "./out/"
+Output directory: "./out/statistical_sith/"
 # Define the way we want to save the simulation:
 # Among "Stack" (using OperationStack), "Last" (Only final state), "Freq" (TODO), "Off" (No save)
-Save mode: "Stack"
-Verbose: True # Default True
+Save mode: "Last"
+Verbose: False # Default True
 # "Seed" must be a number
 
 # Initial condition
@@ -14,10 +14,10 @@ Verbose: True # Default True
 Init: "Empty"
 
 # Model parameters
-Community size: 220
+Community size: 75
 Link minimum: 10
 Cognitive capacity: 750
-Heuristic: "RTH" # Among "SITH", "Complex", "RTH"
+Heuristic: "SITH" # Among "SITH", "Complex", "RTH"
 Temperature: 0.25
 
 # Valid phenotypes (with caps): Trustful, Random, Optimistic, Pessimist, Envious

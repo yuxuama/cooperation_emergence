@@ -9,16 +9,6 @@ import numpy as np
 
 
 ################################################################################################
-# Dataset utils
-################################################################################################
-
-
-def selector_parser(selector):
-    """Parse selector for more selection freedom (useful ?)"""
-    pass
-
-
-################################################################################################
 # Dataset class
 ################################################################################################
 
@@ -126,6 +116,11 @@ class Dataset:
     def modify_field_in_id(self, id, key, new_value, mode="="):
         """Modify the field `field` for id `id` with `new_value
         Possible modes: `"="`, `"+"`, `"-"`, `"*"`, `"/"`"""
+        if key not in self.data[id]:
+            if mode == "=" or mode == "+":
+                self.add_field_in_id(id, key, new_value)
+            else:
+                raise Exception("Could not use mode {} to create a field. You probably want to modify a field that does not exist.".format(mode))
         if mode == "=":
             self.data[id][key] = new_value
         elif mode == "+":
@@ -315,7 +310,30 @@ class DatasetGroup:
             string += str(name) + "\n"
             string += str(self.subs[name]) + "\n"
         return string
-    
+
+################################################################################################
+# Dataset utils
+################################################################################################
+
+
+def selector_parser(selector):
+    """Parse selector for more selection freedom (useful ?)"""
+    pass
+
+def stack_dataset(ds1: Dataset, ds2: Dataset):
+    """Return a dataset with each field of `ds1` stacked onto the ones of `ds2`.
+    Thus both dataset must have **exactly** the same structure."""
+    result_ds = ds1.copy()
+    data = result_ds.get_all_item()
+    for id, value in data.items():
+        queued = ds2.get_item(id)
+        for key, item in value.items():
+            if type(item) is list:
+                ds1.modify_field_in_id(id, key, new_value=item.append(queued[key]))
+            else:
+                ds1.modify_field_in_id(id, key, [item, queued[key]])
+    return result_ds
+
 ################################################################################################
 # Dataset measure
 ################################################################################################
@@ -354,10 +372,10 @@ triadic_skeleton_global = {
     "012210": {"Number": 0, "Type": "Triadic", "Transitive": True},
     "111111": {"Number": 0, "Type": "Triadic", "Transitive": False},
     "012111": {"Number": 0, "Type": "Triadic", "Transitive": False},
-    "112121": {"Number": 0, "Type": "Triadic", "Transitive": False},
-    "022211": {"Number": 0, "Type": "Triadic", "Transitive": True},
-    "211022": {"Number": 0, "Type": "Triadic", "Transitive": False},
     "111012": {"Number": 0, "Type": "Triadic", "Transitive": False},
+    "112121": {"Number": 0, "Type": "Triadic", "Transitive": True},
+    "022211": {"Number": 0, "Type": "Triadic", "Transitive": True},
+    "211022": {"Number": 0, "Type": "Triadic", "Transitive": True},
     "112112": {"Number": 0, "Type": "Triadic", "Transitive": False},
     "122212": {"Number": 0, "Type": "Triadic", "Transitive": True},
     "222222": {"Number": 0, "Type": "Triadic", "Transitive": True}
@@ -381,11 +399,15 @@ def get_id_from_degrees(deg_seq):
             id += str(deg_seq[j][i])
     return id
 
-def measure_global_frequency_triadic_pattern(link_adjacency_matrix, niter):
+def measure_global_frequency_triadic_pattern(link_adjacency_matrix, parameters, niter):
     """Measure the frequency of each triadic pattern"""
     pattern_freq = Dataset("Triadic", niter)
+    phenotype_table = get_vertex_distribution(parameters)
+    possible_phenotype = parameters["Strategy distributions"].keys()
     for key, dt_dict in triadic_skeleton_global.items():
         pattern_freq.add(key, dt_dict.copy())
+        for ph in possible_phenotype:
+            pattern_freq.add_field_in_id(key, ph, 0)
     size = link_adjacency_matrix.shape[0]
     for i in range(size):
         for j in range(i+1, size):
@@ -395,5 +417,12 @@ def measure_global_frequency_triadic_pattern(link_adjacency_matrix, niter):
                 deg_seq.append(complex_degree(j, i, k, link_adjacency_matrix))
                 deg_seq.append(complex_degree(k, j, i, link_adjacency_matrix))
                 triangle_id = get_id_from_degrees(sorted(deg_seq, key=triadic_order))
+
+                ph_i = phenotype_table[i]
+                ph_j = phenotype_table[j]
+                ph_k = phenotype_table[k]
                 pattern_freq.modify_field_in_id(triangle_id, "Number", 1, mode="+")
+                pattern_freq.modify_field_in_id(triangle_id, ph_i, 1, mode="+")
+                pattern_freq.modify_field_in_id(triangle_id, ph_j, 1, mode="+")
+                pattern_freq.modify_field_in_id(triangle_id, ph_k, 1, mode="+")
     return pattern_freq

@@ -322,7 +322,6 @@ def monte_carlo_randomisation(niter, link_adjacency):
     swappable_link = compute_swappable_links(new_link_adjacency)
     
     for it in range(niter):
-
         if len(swappable_link) == 0:
             print("ERROR: no more swappable link")
             print("Breaking loop at iteration: ", it)

@@ -188,6 +188,7 @@ class Network:
     def generate_name(self):
         """Generate name of the simulation based on the parameters"""
         postfix = ""
+        seed = None
         if self.seed is not None:
             seed = self.seed
             self.parameters["Seed"] = seed
@@ -337,6 +338,8 @@ class Network:
             h5file["Trust"] = self.get_trust_adjacency_matrix()
             h5file["Link"] = self.get_link_adjacency_matrix()
             save_parameters_in_hdf5(self.parameters, h5file)
+            if self.verbose:
+                print("Saving in: " + self.out_dir + self.name + ".h5")
         elif self.parameters["Save mode"] != "Off":
             raise ValueError("The 'Save mode' parameter used is not handled")
 

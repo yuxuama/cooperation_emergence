@@ -381,6 +381,10 @@ triadic_skeleton_global = {
     "222222": {"Number": 0, "Type": "Triadic", "Transitive": True}
 }
 
+def is_transitive(triangle_id):
+    """Return whether or not the triadic pattern is transitive"""
+    return triadic_skeleton_global[triangle_id]["Transitive"]
+
 def complex_degree(i, j, k, link_adjacency):
     """Return complex degree of `i` in the triangle drawn by (i,j,k)"""
     out_deg = link_adjacency[i, j] + link_adjacency[i, k]
@@ -399,8 +403,25 @@ def get_id_from_degrees(deg_seq):
             id += str(deg_seq[j][i])
     return id
 
+def get_phenotype_sequence(deg_seq):
+    """Return the order"""
+    seq = ""
+    for i in range(3):
+        seq += deg_seq[i][2][0]
+    return seq
+
+def swap(olist, i, j):
+    result = olist.copy()
+    result[i], result[j] = result[j], result[i]
+    return result
+
+def rotate_one(olist):
+    result = olist.copy()
+    return [result.pop()] + result
+
 def measure_global_frequency_triadic_pattern(link_adjacency_matrix, parameters, niter):
-    """Measure the frequency of each triadic pattern"""
+    """Measure the frequency of each triadic pattern and the proportion of each phenotype in the number
+    of triangles of a certain type"""
     pattern_freq = Dataset("Triadic", niter)
     phenotype_table = get_vertex_distribution(parameters)
     possible_phenotype = parameters["Strategy distributions"].keys()
@@ -426,3 +447,57 @@ def measure_global_frequency_triadic_pattern(link_adjacency_matrix, parameters, 
                 pattern_freq.modify_field_in_id(triangle_id, ph_j, 1, mode="+")
                 pattern_freq.modify_field_in_id(triangle_id, ph_k, 1, mode="+")
     return pattern_freq
+
+def measure_triadic_pattern_phenotype_combination(link_adjacency_matrix, parameters, niter):
+    """Measure the triadic pattern phenotype """
+    dtg = DatasetGroup("count")
+    for key in triadic_skeleton_global.keys():
+        dtg.add_dataset(Dataset(key, niter))
+    phenotype_table = get_vertex_distribution(parameters)
+    size = link_adjacency_matrix.shape[0]
+    for i in range(size):
+        for j in range(i+1, size):
+            for k in range(j+1, size):
+                deg_seq = []
+                a, b = complex_degree(i, j, k, link_adjacency_matrix)
+                deg_seq.append((a, b, phenotype_table[i]))
+                a, b = complex_degree(j, i, k, link_adjacency_matrix)
+                deg_seq.append((a, b, phenotype_table[j]))
+                a, b = complex_degree(k, j, i, link_adjacency_matrix)
+                deg_seq.append((a, b, phenotype_table[k]))
+                deg_seq = sorted(deg_seq, key=triadic_order)
+                triangle_id = get_id_from_degrees(deg_seq)
+
+                dt = dtg.get_item(triangle_id)
+                if triangle_id == "222222" or triangle_id == "000000":
+                    deg_seq = sorted(deg_seq, key=lambda x: x[2])
+                    detected = get_phenotype_sequence(deg_seq)
+                elif triangle_id == "111111":
+                    ph_one = rotate_one(deg_seq)
+                    ph_two = get_phenotype_sequence(rotate_one(ph_one))
+                    ph_one = get_phenotype_sequence(ph_one)
+                    if ph_one in dt.data:
+                        detected = ph_one
+                    elif ph_two in dt.data:
+                        detected = ph_two
+                    else:
+                        detected = get_phenotype_sequence(deg_seq)
+                    
+                else:
+                    swap_first = swap(deg_seq, 0, 1)
+                    swap_last = swap(deg_seq, 1, 2)
+                    if triangle_id == get_id_from_degrees(swap_first):
+                        if get_phenotype_sequence(swap_first) in dt.data:
+                            detected = get_phenotype_sequence(swap_first)
+                    elif triangle_id == get_id_from_degrees(swap_last):
+                        if get_phenotype_sequence(swap_last) in dt.data:
+                            detected = get_phenotype_sequence(swap_last)
+                    else:
+                        detected = get_phenotype_sequence(deg_seq)
+                
+                if detected in dt.data:
+                    dt.modify_field_in_id(detected, "Number", 1, mode="+")
+                else:
+                    dt.add(detected, {"Number": 1})
+    return dtg
+

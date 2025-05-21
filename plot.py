@@ -248,6 +248,34 @@ def plot_triadic_pattern_phenotype(triadic_dataset, parameters, **plot_kwargs):
     
     return ax
 
+def plot_phenotype_combination_per_triangle(triangle_id, combination_dt, th=0):
+    """Plot for the triangle with `triangle_id` the possible combination of phenotype calculated in
+    `combination_dt` with number of occurences above `th`"""
+    dtga = combination_dt.aggregate("Number")
+    data = dtga.get_item(triangle_id).get_item("Number").get_all_item()
+    data_order = sorted(data.items(), key=lambda x: x[1])
+    plot_combination = []
+    plot_data = []
+    for i in range(len(data_order)):
+        if data_order[i][1] > th:
+            plot_combination.append(data_order[i][0])
+            plot_data.append(data_order[i][1])
+    
+    fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+    ax.bar(range(len(plot_data)), plot_data)
+    ax.set_xticks(range(len(plot_data)))
+    ax.set_xticklabels(plot_combination)
+    ax.set_title("Phenotype combinations distribution for triangle {0} with threshold {1}".format(triangle_id, th))
+    ax.set_ylabel("Occurence")
+
+    filepath =  r"C:\Users\Matthieu\Documents\_Travail\Stages\Stage M1\Workspace\image\triadic_numbered_{}.png".format(triangle_id)
+    img = plt.imread(filepath)
+    im = OffsetImage(img, zoom=0.6)
+    im.image.axes = ax
+    ab = AnnotationBbox(im, (0.1, 0.85),  xybox=(0, -4),
+                xycoords='axes fraction',  boxcoords="offset points", pad=0.5)
+    ax.add_artist(ab)
+
 ################################################################################################
 # Plot evolution
 ################################################################################################

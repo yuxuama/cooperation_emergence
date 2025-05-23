@@ -127,8 +127,8 @@ def plot_hist_by_phenotype(dataset, quantity, **plot_kwargs):
 
 def plot_diadic_pattern(dataset, **plot_kwargs):
     """Plot bar graph with diadic pattern repartition per phenotype"""
-    dta = dataset.group_by("Phenotype").aggregate((".", "<-", "->", "--"))
-    global_dta = dataset.aggregate((".", "<-", "->", "--"))
+    dta = dataset.group_by("Phenotype").aggregate((".", "<-", "->", "<->"))
+    global_dta = dataset.aggregate((".", "<-", "->", "<->"))
     possible_phenotype = sorted(list(dta.keys()))
     fig_layout = [(1, 2), (1, 3), (2, 3), (2, 3), (2, 3)]
     layout = fig_layout[dta.size - 1]
@@ -144,14 +144,14 @@ def plot_diadic_pattern(dataset, **plot_kwargs):
                 no_link = sum(global_dta.get_item(".").get_all_item().values())
                 in_link = sum(global_dta.get_item("<-").get_all_item().values())
                 out_link = sum(global_dta.get_item("->").get_all_item().values())
-                bi_link = sum(global_dta.get_item("--").get_all_item().values())
+                bi_link = sum(global_dta.get_item("<->").get_all_item().values())
                 data = [no_link, in_link, out_link, bi_link]
                 title = "Global"
             else:
                 no_link = sum(dta.get_item(possible_phenotype[index]).get_item(".").get_all_item().values())
                 in_link = sum(dta.get_item(possible_phenotype[index]).get_item("<-").get_all_item().values())
                 out_link = sum(dta.get_item(possible_phenotype[index]).get_item("->").get_all_item().values())
-                bi_link = sum(dta.get_item(possible_phenotype[index]).get_item("--").get_all_item().values())
+                bi_link = sum(dta.get_item(possible_phenotype[index]).get_item("<->").get_all_item().values())
                 data = [no_link, in_link, out_link, bi_link]
                 title = possible_phenotype[index]
             ax[selector].bar(["0", "<--", "-->", "<->"], data, **plot_kwargs)
@@ -161,7 +161,7 @@ def plot_diadic_pattern(dataset, **plot_kwargs):
     return ax
 
 def plot_bar_diadic_pattern(dataset, **plot_kwargs):
-    dta = dataset.group_by("Phenotype").aggregate((".", "<-", "->", "--"))
+    dta = dataset.group_by("Phenotype").aggregate((".", "<-", "->", "<->"))
     possible_phenotype = sorted(list(dta.keys()))
     link_type = ["0", "<--", "-->", "<->"]
     bottom = np.zeros(4)
@@ -170,13 +170,34 @@ def plot_bar_diadic_pattern(dataset, **plot_kwargs):
         no_link = sum(dta.get_item(possible_phenotype[i]).get_item(".").get_all_item().values())
         in_link = sum(dta.get_item(possible_phenotype[i]).get_item("<-").get_all_item().values())
         out_link = sum(dta.get_item(possible_phenotype[i]).get_item("->").get_all_item().values())
-        bi_link = sum(dta.get_item(possible_phenotype[i]).get_item("--").get_all_item().values())
+        bi_link = sum(dta.get_item(possible_phenotype[i]).get_item("<->").get_all_item().values())
         data = np.array([no_link, in_link, out_link, bi_link])
         ax.bar(link_type, data, bottom=bottom, label=possible_phenotype[i], **plot_kwargs)
         bottom += data
     ax.set_title("Diadic pattern @ inter {}".format(dataset.niter))
     ax.set_ylabel("Occurences")
     plt.legend()
+
+def plot_phenotype_combination_per_link(link_type, combination_dt, th=0):
+    """Plot for the linl with `link_type` (among `'.'`, `'->'`, `'<-'`, `'<->'`) the possible combination of phenotype calculated in
+    `combination_dt` with number of occurences above `th`"""
+    dtga = combination_dt.aggregate("Number")
+    data = dtga.get_item(link_type).get_item("Number").get_all_item()
+    data_order = sorted(data.items(), key=lambda x: x[1])
+    plot_combination = []
+    plot_data = []
+    for i in range(len(data_order)):
+        if data_order[i][1] > th:
+            plot_combination.append(data_order[i][0])
+            plot_data.append(data_order[i][1])
+    
+    fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+    ax.bar(range(len(plot_data)), plot_data)
+    ax.set_xticks(range(len(plot_data)))
+    ax.set_xticklabels(plot_combination)
+    ax.set_title("Phenotype combinations distribution for {0} with threshold {1}".format(link_type, th))
+    ax.set_ylabel("Occurence")
+    return ax
 
 def plot_triadic_pattern(triadic_dataset, selector="Number", **plot_kwargs):
     data = triadic_dataset.aggregate(selector).get_item(selector).get_all_item()
@@ -275,6 +296,7 @@ def plot_phenotype_combination_per_triangle(triangle_id, combination_dt, th=0):
     ab = AnnotationBbox(im, (0.1, 0.85),  xybox=(0, -4),
                 xycoords='axes fraction',  boxcoords="offset points", pad=0.5)
     ax.add_artist(ab)
+    return ax
 
 ################################################################################################
 # Plot evolution

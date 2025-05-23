@@ -343,13 +343,13 @@ def measure_frequency_diadic_pattern(link_adjacency_matrix, phenotype_table, nit
     pattern_freq = Dataset("Diadic", niter)
     size = link_adjacency_matrix.shape[0]
     for i in range(size):
-        pattern_freq.add(i, {".": 0, "->": 0, "<-": 0,"--": 0, "Phenotype": phenotype_table[i]})
+        pattern_freq.add(i, {".": 0, "->": 0, "<-": 0,"<->": 0, "Phenotype": phenotype_table[i]})
     for i in range(size):
         for j in range(i+1, size):
             if link_adjacency_matrix[i, j] == link_adjacency_matrix[j, i]:
                 if link_adjacency_matrix[i, j] > 0:
-                    pattern_freq.modify_field_in_id(i, "--", 1, mode="+")
-                    pattern_freq.modify_field_in_id(j, "--", 1, mode="+")
+                    pattern_freq.modify_field_in_id(i, "<->", 1, mode="+")
+                    pattern_freq.modify_field_in_id(j, "<->", 1, mode="+")
                 else:
                     pattern_freq.modify_field_in_id(i, ".", 1, mode="+")
                     pattern_freq.modify_field_in_id(j, ".", 1, mode="+")
@@ -361,6 +361,60 @@ def measure_frequency_diadic_pattern(link_adjacency_matrix, phenotype_table, nit
                     pattern_freq.modify_field_in_id(j, "->", 1, mode="+")
                     pattern_freq.modify_field_in_id(i, "<-", 1, mode="+")
     return pattern_freq
+
+def get_phenotype_code(ph1, ph2):
+    """Return the phenotype code of the link between the two agents with
+    phenotypes `ph1` and `ph2`"""
+    return ph1[0] + ph2[0]
+
+def revert_phenotype_code(ph_code):
+    """Reverse the phenotype code"""
+    return ph_code[1] + ph_code[0]
+
+def measure_diadic_pattern_combination(link_adjacency_matrix, phenotype_table, niter):
+    """Measure the frequency of each combination among diadic pattern '.', '<->', '->', '<-'"""
+    dtg = DatasetGroup('diadic pattern')
+    pattern = [".", "<->", "->", "<-"]
+    for p in pattern:
+        dtg.add_dataset(Dataset(p))
+    size = link_adjacency_matrix.shape[0]
+    for i in range(size):
+        for j in range(i+1, size):
+            ph_i = phenotype_table[i]
+            ph_j = phenotype_table[j]
+            ph_code = get_phenotype_code(ph_i, ph_j)
+            r_ph_code = revert_phenotype_code(ph_code)
+            if link_adjacency_matrix[i, j] == link_adjacency_matrix[j, i]:
+                if link_adjacency_matrix[i, j] > 0:
+                    dt = dtg.get_item("<->")
+                else:
+                    dt = dtg.get_item(".")
+                if r_ph_code in dt.data:
+                    dt.modify_field_in_id(r_ph_code, "Number", 1, mode="+")
+                else:
+                    if not ph_code in dt.data: 
+                        dt.add(ph_code, {"Number": 0})
+                    dt.modify_field_in_id(ph_code, "Number", 1, mode="+")                        
+            else:
+                if link_adjacency_matrix[i, j] > 0:
+                    dt = dtg.get_item("->")
+                    if not ph_code in dt.data:
+                        dt.add(ph_code, {"Number": 0})
+                    dt.modify_field_in_id(ph_code, "Number", 1, mode="+")
+                    dt = dtg.get_item("<-")
+                    if not r_ph_code in dt.data:
+                        dt.add(r_ph_code, {"Number": 0})
+                    dt.modify_field_in_id(r_ph_code, "Number", 1, mode="+")
+                else:
+                    dt = dtg.get_item("<-")
+                    if not ph_code in dt.data:
+                        dt.add(ph_code, {"Number": 0})
+                    dt.modify_field_in_id(ph_code, "Number", 1, mode="+")
+                    dt = dtg.get_item("->")
+                    if not r_ph_code in dt.data:
+                        dt.add(r_ph_code, {"Number": 0})
+                    dt.modify_field_in_id(r_ph_code, "Number", 1, mode="+")
+    return dtg
 
 triadic_skeleton_global = {
     "000000": {"Number": 0, "Type": "Diadic", "Transitive": False},

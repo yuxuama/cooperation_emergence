@@ -388,7 +388,20 @@ class Network:
             for vend in v.link:
                 link_adjacency_matrix[i, vend.index] = True
 
-        return link_adjacency_matrix       
+        return link_adjacency_matrix
+
+    def get_edge_list(self):
+        """Return the total edge list. Each link in the list has format (start, end, trust, link).
+        This can be used to define a Graph object in the `graph-tool` framework."""
+        elist = []
+        for v in self.vertices:
+            for w in self.vertices:
+                if v.trust_in(w) > 0:
+                    if v.is_linked(w):
+                        elist.append((v.index, w.index, v.trust_in(w), 1))
+                    else:
+                        elist.append((v.index, w.index, v.trust_in(w), 0))
+        return elist
 
 """Vertex class for handling people"""
 

@@ -165,6 +165,8 @@ def measure_etas_from_xhi(i, trust_adjacency_matrix, parameters):
     """Measure the value of the eta parameters for agent `i` in the network
     Return: eta, t and xhi(t)"""
     xhi = compute_xhi(i, trust_adjacency_matrix, parameters)
+    if len(xhi) < 2:
+        return
     size = xhi.size
     t_norm = np.arange(size) / (size - 1)
     model = lambda j, eta: (np.exp(eta * j) - 1) / (np.exp(eta) - 1)
@@ -174,6 +176,8 @@ def measure_etas_from_xhi(i, trust_adjacency_matrix, parameters):
 def compute_xhi(i, trust_adjacency_matrix, parameters):
     """Compute the xhi as defined in https://doi.org/10.1038/s41598-022-06066-1 for agent `i`"""
     data = trust_adjacency_matrix[i]
+    if np.sum(data) == 0:
+        return
     bins = np.arange(0, np.max(data)+2)
     expectations, _ = np.histogram(data, bins=bins, density=False)
     expectations = expectations[parameters["Link minimum"]::]

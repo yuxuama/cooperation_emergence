@@ -199,7 +199,7 @@ def plot_phenotype_combination_per_link(link_type, combination_dt, th=0):
     ax.set_ylabel("Occurence")
     return ax
 
-def plot_triadic_pattern(triadic_dataset, selector="Number", **plot_kwargs):
+def plot_triadic_pattern(triadic_dataset, selector="Number", triangle_only=False, **plot_kwargs):
     data = triadic_dataset.aggregate(selector).get_item(selector).get_all_item()
     triangle_names = list(data.keys())
 
@@ -218,7 +218,11 @@ def plot_triadic_pattern(triadic_dataset, selector="Number", **plot_kwargs):
 
     _, ax = plt.subplots(1, 1, figsize=(8, 5))
 
-    ax.bar(range(0, len(data)*2, 2), list(data.values()), width=1, align="center", **plot_kwargs)
+    data = np.array(data.values())
+    if triangle_only:
+        data = np.array(data.values())[3::]
+
+    ax.bar(range(0, len(data)*2, 2), data, width=1, align="center", **plot_kwargs)
     ax.tick_params(axis='x', which='both', labelbottom=False, top=False, bottom=False)
     ax.set_ylabel("Occurences")
     if selector == "Number":
@@ -228,11 +232,14 @@ def plot_triadic_pattern(triadic_dataset, selector="Number", **plot_kwargs):
     ax.set_title("Triadic pattern frequency for {0} @ inter {1}".format(selector, triadic_dataset.niter))
 
     for i in range(0, len(data)*2, 2):
-        offset_image(i, triangle_names[i//2], ax)
+        if triangle_only:
+            offset_image(i, triangle_names[i//2+3], ax)
+        else:
+            offset_image(i, triangle_names[i//2], ax)
     
     return ax
 
-def plot_triadic_pattern_phenotype(triadic_dataset, parameters, **plot_kwargs):
+def plot_triadic_pattern_phenotype(triadic_dataset, parameters, triangle_only=False, **plot_kwargs):
     possible_fields = list(parameters["Strategy distributions"].keys())
     possible_fields.append("Number")
     data = triadic_dataset.aggregate(possible_fields)
@@ -254,18 +261,25 @@ def plot_triadic_pattern_phenotype(triadic_dataset, parameters, **plot_kwargs):
     _, ax = plt.subplots(1, 1, figsize=(8, 5))
 
     bottom = np.zeros(16)
+    if triangle_only:
+        bottom = bottom[3::]
     for i in range(len(possible_fields) - 1):
         ph_data = data.get_item(possible_fields[i]).get_all_item()
         values = np.array(list(ph_data.values())) / 3
-        ax.bar(range(0, len(ph_data)*2, 2), values, width=1, align="center", bottom=bottom, label=possible_fields[i], **plot_kwargs)
+        if triangle_only:
+            values = values[3::]
+        ax.bar(range(0, len(values)*2, 2), values, width=1, align="center", bottom=bottom, label=possible_fields[i], **plot_kwargs)
         bottom += values
     ax.tick_params(axis='x', which='both', labelbottom=False, top=False, bottom=False)
     ax.set_ylabel("Occurences")
     ax.set_title("Triadic pattern frequency @ inter {}".format(triadic_dataset.niter))
     ax.legend()
 
-    for i in range(0, len(ph_data)*2, 2):
-        offset_image(i, triangle_names[i//2], ax)
+    for i in range(0, len(values)*2, 2):
+        if triangle_only:
+            offset_image(i, triangle_names[i//2+3], ax)
+        else:
+            offset_image(i, triangle_names[i//2], ax)
     
     return ax
 

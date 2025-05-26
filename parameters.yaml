@@ -1,12 +1,13 @@
 # YAML document with parameters of the simulation
 # Simulation parameters
 Number of interaction: 444675
-Output directory: "./out/test/"
+Output directory: "./out/last/"
 # Define the way we want to save the simulation:
 # Among "Stack" (using OperationStack), "Last" (Only final state), "Freq" (TODO), "Off" (No save)
 Save mode: "Last"
 Verbose: True # Default True
 # "Seed" must be a number
+Seed: "distrib"
 
 # Initial condition
 # Among "Empty", "Random", "Groups"
@@ -17,10 +18,10 @@ Init: "Empty"
 Community size: 50
 Link minimum:
   Mean: 10
-  Sigma: 2
+  Sigma: 3
 Cognitive capacity:
-  Mean: 200
-  Sigma: 50
+  Mean: 750
+  Sigma: 100
 Heuristic: "SITH" # Among "SITH", "Complex", "RTH"
 Temperature: 0.25
 

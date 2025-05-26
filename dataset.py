@@ -38,6 +38,10 @@ class Dataset:
             index = vertices[i].index
             # Phenotype
             i_data["Phenotype"] = vertices[i].phenotype
+            # Cognitive capacity
+            i_data["Cognitive capacity"] = vertices[i].capacity
+            # Link minimum
+            i_data["Link minimum"] = vertices[i].link_min
             # Load
             i_data["Load"] = vertices[i].load / vertices[i].capacity
             # Outdegree
@@ -49,11 +53,7 @@ class Dataset:
             # Asymmetry
             i_data["Asymmetry"] = asymmetries[index]
             # Eta        
-            i_data["Eta"] = measure_etas_from_xhi(index, trust_adjacency, net.parameters)
-            # Trust histogram
-
-            # bins
-
+            i_data["Eta"] = measure_etas_from_xhi(index, trust_adjacency, vertices[i].link_min)
             # Adding field to dataset data
             self.data[vertices[i].index] = i_data
         return self
@@ -70,7 +70,7 @@ class Dataset:
         net.reload_with_hdf5(filepath)
         return self.init_with_network(net)
 
-    def init_with_matrices(self, link_adjacency, trust_adjacency, capacity_table, parameters, niter):
+    def init_with_matrices(self, link_adjacency, trust_adjacency, capacity_table, link_min_table, parameters, niter):
         """Initialize structure for local measurement only with matrices and parameters"""
         self.size = parameters["Community size"]
         self.niter = niter
@@ -84,6 +84,10 @@ class Dataset:
             i_data = {}
             # Phenotype
             i_data["Phenotype"] = phenotype_table[i]
+            # Cognitive capacity
+            i_data["Cognitive capacity"] = capacity_table[i]
+            # Link minimum
+            i_data["Link minimum"] = link_min_table[i]
             # Load
             i_data["Load"] = np.sum(trust_adjacency[i]) / capacity_table[i]
             # Outdegree

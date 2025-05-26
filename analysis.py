@@ -161,10 +161,10 @@ def measure_number_of_link(link_adjacency_matrix):
 # Xhi and etas
 ######################################################################################
 
-def measure_etas_from_xhi(i, trust_adjacency_matrix, parameters):
+def measure_etas_from_xhi(i, trust_adjacency_matrix, link_min):
     """Measure the value of the eta parameters for agent `i` in the network
     Return: eta, t and xhi(t)"""
-    xhi = compute_xhi(i, trust_adjacency_matrix, parameters)
+    xhi = compute_xhi(i, trust_adjacency_matrix, link_min)
     if len(xhi) < 2:
         return
     size = xhi.size
@@ -173,14 +173,14 @@ def measure_etas_from_xhi(i, trust_adjacency_matrix, parameters):
     popt, _ = curve_fit(model, t_norm, xhi)
     return popt[0]
     
-def compute_xhi(i, trust_adjacency_matrix, parameters):
+def compute_xhi(i, trust_adjacency_matrix, link_min):
     """Compute the xhi as defined in https://doi.org/10.1038/s41598-022-06066-1 for agent `i`"""
     data = trust_adjacency_matrix[i]
     if np.sum(data) == 0:
         return
     bins = np.arange(0, np.max(data)+2)
     expectations, _ = np.histogram(data, bins=bins, density=False)
-    expectations = expectations[parameters["Link minimum"]::]
+    expectations = expectations[int(link_min)::]
     L = np.sum(expectations)
     xhi = expectations / L
     xhi = np.flip(xhi)
@@ -189,11 +189,20 @@ def compute_xhi(i, trust_adjacency_matrix, parameters):
     
     return xhi
 
-def compute_xhi_mean(trust_adjacency_matrix, parameters, ph_selector="Global"):
+def compute_xhi_mean(trust_adjacency_matrix, link_min_table, parameters, ph_selector="Global"):
     """Compute the xhi as defined in https://doi.org/10.1038/s41598-022-06066-1
     for the group distribution labeled by `ph_selector`"""
+    if ph_selector == "Global":
+        link_min = np.min(link_min_table)
+    else:
+        link_min = np.max(link_min_table)
+        vertex_distrib = get_vertex_distribution(parameters)
+        for i in range(len(vertex_distrib)):
+            if vertex_distrib[i] == ph_selector:
+                if link_min_table[i] < link_min:
+                    link_min = link_min_table[i]
     expectations = histogram(trust_adjacency_matrix, parameters)
-    expectations = expectations[ph_selector][parameters["Link minimum"]::]
+    expectations = expectations[ph_selector][int(link_min)::]
     L = np.sum(expectations)
     xhi = expectations / L
     xhi = np.flip(xhi)
@@ -202,11 +211,18 @@ def compute_xhi_mean(trust_adjacency_matrix, parameters, ph_selector="Global"):
     
     return xhi
 
-def compute_all_xhi_mean(trust_adjacency_matrix, parameters):
+def compute_all_xhi_mean(trust_adjacency_matrix, link_min_table, parameters):
     """Compute the xhi function per phenotype"""
     all_xhi = histogram(trust_adjacency_matrix, parameters)
+    all_link_min = {"Global": np.min(link_min_table)}
+    vertex_distrib = get_vertex_distribution(parameters)
+    for i in range(len(vertex_distrib)):
+        if vertex_distrib[i] in all_link_min:
+            all_link_min[vertex_distrib[i]] = min(all_link_min[vertex_distrib[i]], link_min_table[i])
+        else:
+            all_link_min[vertex_distrib[i]] = link_min_table[i]
     for key in all_xhi.keys():
-        data = all_xhi[key][parameters["Link minimum"]::]
+        data = all_xhi[key][int(all_link_min[key])::]
         L = np.sum(data)
         xhi = data / L
         xhi = np.flip(xhi)
@@ -216,7 +232,7 @@ def compute_all_xhi_mean(trust_adjacency_matrix, parameters):
     
     return all_xhi
 
-def estimate_etas_with_L(trust_adjacency_matrix, link_adjacency_matrix, parameters):
+def estimate_etas_with_L(trust_adjacency_matrix, link_adjacency_matrix, link_min_table):
     """Estimate the eta parameter defined in https://doi.org/10.1038/s41598-022-06066-1
     with the estimator derived from bayesian inference described in the paper"""
     n = trust_adjacency_matrix.shape[0]
@@ -225,12 +241,12 @@ def estimate_etas_with_L(trust_adjacency_matrix, link_adjacency_matrix, paramete
     func_prime = lambda eta: (1/(eta**2)) - (np.exp(eta)/(np.exp(eta) -1)**2)
 
     for i in range(n):
-        L = np.sum(trust_adjacency_matrix[i] > parameters["Link minimum"])
+        L = np.sum(trust_adjacency_matrix[i] > link_min_table[i])
 
         selector = link_adjacency_matrix[i] > 0
         trust_values = trust_adjacency_matrix[i][selector]
         freq, bins = np.histogram(trust_values, bins=np.arange(np.min(trust_values), np.max(trust_values)+2))
-        L1 = np.sum(freq * (np.flip(bins[0:bins.size-1]) - parameters["Link minimum"])) / (np.max(trust_adjacency_matrix) - parameters["Link minimum"])
+        L1 = np.sum(freq * (np.flip(bins[0:bins.size-1]) - link_min_table[i])) / (np.max(trust_adjacency_matrix) - link_min_table[i])
 
         if L1/L > 1:
             print("WARNING: value of ratio above 1... skipping")
@@ -245,12 +261,12 @@ def estimate_etas_with_L(trust_adjacency_matrix, link_adjacency_matrix, paramete
     
     return etas
 
-def compute_xhi_ratio(i, trust_adjacency_matrix, parameters):
+def compute_xhi_ratio(i, trust_adjacency_matrix, link_min):
     """Compute the xhi ratio as defined in https://doi.org/10.1038/s41598-022-06066-1 for agent `i`"""
     data = trust_adjacency_matrix[i]
     bins = np.arange(0, np.max(data)+2)
     expectations, _ = np.histogram(data, bins=bins, density=False)
-    expectations = expectations[parameters["Link minimum"]::]
+    expectations = expectations[link_min::]
     L = np.sum(expectations)
     xhi = expectations / L
     xhi = np.flip(xhi) # the scale goes from high cost to low cost

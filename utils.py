@@ -22,25 +22,47 @@ def save_parameters(parameters, dir_path, prefix=""):
 def save_parameters_in_hdf5(parameters, hdf5_file: h5py.File):
     """Save the parameters `parameters` in the HDF5 file `hdf5_file` (must be of type h5py.File)"""
     pgroup = hdf5_file.create_group("Parameters", track_order=True)
+    dict_key = ["Strategy distributions"]
+    if type(parameters["Link minimum"]) is dict:
+        dict_key.append("Link minimum")
+    if type(parameters["Cognitive capacity"]) is dict:
+        dict_key.append("Cognitive capacity")
+    
+    # One value key
     for key, value in parameters.items():
-        if key != "Strategy distributions":
+        if not key in dict_key:
             pgroup[key] = value
-    strat_subgroup = pgroup.create_group("Strategy distributions")
-    for key, value in parameters["Strategy distributions"].items():
-        strat_subgroup[key] = value
+
+    # Dict key
+    for k in dict_key:
+        subgroup = pgroup.create_group(k)
+        for key, value in parameters[k].items():
+            subgroup[key] = value
 
 def extract_parameters_from_hdf5(filepath):
     """Extract the parameters from the HDF5 file at `filepath`"""
     parameters = {}
     string_keys = {"Heuristic", "Init", "Output directory", "Save mode"}
+    special_keys = {"Link minimum", "Cognitive capacity"}
     hdf5_file = h5py.File(filepath)
     grp = hdf5_file["Parameters"]
     for p in grp.keys():
-        if p != "Strategy distributions":
+        if p != "Strategy distributions" and not p in special_keys:
             if p in string_keys:
                 parameters[p] = grp.get(p)[()].decode("ascii")
             else:
                 parameters[p] = grp.get(p)[()]
+        elif p != "Strategy distributions":
+            subgrp = grp[p]
+            if type(subgrp) is h5py.Dataset:
+                if p in string_keys:
+                    parameters[p] = subgrp[()].decode("ascii")
+                else:
+                    parameters[p] = subgrp[()]
+            else:
+                parameters[p] = {}
+                for k in subgrp.keys():
+                    parameters[p][k] = subgrp.get(k)[()]
     subgrp = grp["Strategy distributions"]
     strategy_distrib = {}
     for ph in subgrp.keys():
@@ -79,8 +101,16 @@ def generate_output_name_from_parameters(parameters, postfix):
         name += str(parameters["Number of groups"])
     name += parameters["Init"]
     name += "_"
-    name += "L" + str(parameters["Link minimum"]) + "_"
-    name += "C" + str(parameters["Cognitive capacity"]) + "_"
+    if type(parameters["Link minimum"]) is dict:
+        link_min = parameters["Link minimum"]["Mean"]
+    else:
+        link_min = parameters["Link minimum"]
+    name += "L" + str(link_min) + "_"
+    if type(parameters["Cognitive capacity"]) is dict:
+        capacity = parameters["Cognitive capacity"]["Mean"]
+    else:
+        capacity = parameters["Cognitive capacity"]
+    name += "C" + str(capacity) + "_"
     name += "S" + str(parameters["Community size"]) + "_"
     name += "T" + str(parameters["Temperature"])
 
@@ -187,7 +217,7 @@ def proceed(text):
 
 """INIT functions"""
 
-def create_social_group(size, assignation, adjacency_matrix, min_trust):
+def create_social_group(size, assignation, adjacency_matrix, min_link_table):
     """Create a fully connected graph of size `size` among an unassigned group of people
     Allow to create disconnected social group"""
     remaining = assignation.size - np.sum(assignation)
@@ -210,18 +240,18 @@ def create_social_group(size, assignation, adjacency_matrix, min_trust):
         assignation[real_sample[i]] = True
         for j in range(size):
             if j != i:
-                adjacency_matrix[real_sample[i], real_sample[j]] = min_trust
+                adjacency_matrix[real_sample[i], real_sample[j]] = min_link_table[real_sample[i]]
 
-def create_random_init(adjacency_matrix, cognitive_capa, min_trust):
+def create_random_init(adjacency_matrix, capacity_table, min_link_table):
     """Create a network with `n` random trust link"""
     n = adjacency_matrix.shape[0]
     for i in range(n):
         for j in range(n):
             if i != j:
                 s = np.sum(adjacency_matrix[i])
-                remain = cognitive_capa - s
+                remain = capacity_table[i] - s
                 if remain <= 0:
                     adjacency_matrix[i, j] = 0
                 else:
-                    adjacency_matrix[i, j] = np.random.randint(0, min(2 * min_trust, remain+1))
+                    adjacency_matrix[i, j] = np.random.randint(0, min(2 * min_link_table[i], remain+1))
 

@@ -39,7 +39,7 @@ class Dataset:
             # Phenotype
             i_data["Phenotype"] = vertices[i].phenotype
             # Load
-            i_data["Load"] = vertices[i].load / net.parameters["Cognitive capacity"]
+            i_data["Load"] = vertices[i].load / vertices[i].capacity
             # Outdegree
             i_data["Out degree"] = out_degrees[index]
             # Indegree
@@ -70,7 +70,7 @@ class Dataset:
         net.reload_with_hdf5(filepath)
         return self.init_with_network(net)
 
-    def init_with_matrices(self, link_adjacency, trust_adjacency, parameters, niter):
+    def init_with_matrices(self, link_adjacency, trust_adjacency, capacity_table, parameters, niter):
         """Initialize structure for local measurement only with matrices and parameters"""
         self.size = parameters["Community size"]
         self.niter = niter
@@ -85,7 +85,7 @@ class Dataset:
             # Phenotype
             i_data["Phenotype"] = phenotype_table[i]
             # Load
-            i_data["Load"] = np.sum(trust_adjacency[i]) / parameters["Cognitive capacity"]
+            i_data["Load"] = np.sum(trust_adjacency[i]) / capacity_table[i]
             # Outdegree
             i_data["Out degree"] = out_degrees[i]
             # Indegree

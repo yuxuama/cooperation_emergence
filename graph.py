@@ -32,6 +32,8 @@ class Network:
         self.seed = seed
         self.out_dir = None
         self.phenotypes_table = None # Correspondance index-phenotype
+        self.min_link_table = None # Correspondance index-min link value
+        self.capacity_table = None # Correspondance index-cognitive capacity value
         self.community_table = None # Correspondence index-community (for future work)
         self.vertices = None
         self.oper = OperationStack()
@@ -72,10 +74,17 @@ class Network:
         self.name = self.generate_name()
 
         # Create vertices
-        self.create_all_vertices()
+        h5file = h5py.File(filepath)
+        keys = h5file.keys()
+        capacity_table = None
+        min_link_table = None
+        if "Capacity table" in keys:
+            capacity_table = h5file.get("Capacity table")[:]
+        if "Link minimum table" in keys:
+            min_link_table = h5file.get("Link minimum table")[:]
+        self.create_all_vertices(capacity_table, min_link_table)
 
         # Initializing structure
-        h5file = h5py.File(filepath)
         t = h5file["Trust"]
         self.set_trust_adjacency_matrix(t)
 
@@ -95,7 +104,15 @@ class Network:
         self.name = self.generate_name()
         
         # Create vertices
-        self.create_all_vertices()
+        h5file = h5py.File(stackdir + "init.h5")
+        keys = h5file.keys()
+        capacity_table = None
+        min_link_table = None
+        if "Capacity table" in keys:
+            capacity_table = h5file.get("Capacity table")[:]
+        if "Link minimum table" in keys:
+            min_link_table = h5file.get("Link minimum table")[:]
+        self.create_all_vertices(capacity_table, min_link_table)
 
         # Initializing structure
         t, _ = self.oper.resolve(-1)
@@ -113,7 +130,7 @@ class Network:
             self._first_stack_context = True
         print("Successfully change saving mode: {0} --> {1}".format(old, new_save_mode))
     
-    def create_all_vertices(self):
+    def create_all_vertices(self, capacity_table=None, min_link_table=None):
         """Create all vertices of the graph according to the parameters"""
         # Phenotypes distribution
         strategy_distrib = self.parameters["Strategy distributions"]
@@ -122,7 +139,26 @@ class Network:
         for p in strategy_distrib.values():
             distribution_grid.append(distribution_grid[-1] + p)
         distribution_grid = self.parameters[p_size] * np.array(distribution_grid)
-         
+        
+        # Creating `min_link` and `capacity` tables
+        if type(self.parameters[p_link_min]) is dict:
+            if min_link_table is None:
+                min_link_dict = self.parameters[p_link_min]
+                self.min_link_table = np.random.normal(min_link_dict["Mean"], min_link_dict["Sigma"], self.parameters[p_size])
+            else:
+                self.min_link_table = min_link_table
+        else:
+            self.min_link_table = self.parameters[p_link_min] * np.ones(self.parameters[p_size])
+        
+        if type(self.parameters[p_cognitive_c]) is dict:
+            if capacity_table is None:
+                min_link_dict = self.parameters[p_cognitive_c]
+                self.capacity_table = np.random.normal(min_link_dict["Mean"], min_link_dict["Sigma"], self.parameters[p_size])
+            else:
+                self.capacity_table = capacity_table 
+        else:
+            self.capacity_table = self.parameters[p_cognitive_c] * np.ones(self.parameters[p_size])
+
         # Creating vertices
         self.vertices = np.zeros(self.parameters[p_size], dtype=Vertex)
         self.phenotypes_table = ["" for i in range(self.parameters[p_size])]
@@ -134,21 +170,21 @@ class Network:
                 ph_pointer += 1
             phenotype = possible_phenotypes[ph_pointer]
             self.phenotypes_table[i] = phenotype
-            self.create_vertex(i, phenotype)
+            self.create_vertex(i, phenotype, self.capacity_table[i], self.min_link_table[i])
 
-    def create_vertex(self, index, phenotype):
+    def create_vertex(self, index, phenotype, capacity, min_link):
         """Add a person into the simulation"""
         # Choosing phenotypes according to distribution
         if phenotype == "Random":
-            self.vertices[index] = Random(index, self.parameters)
+            self.vertices[index] = Random(index, capacity, min_link, self.parameters["Heuristic"])
         elif phenotype == "Trustful":
-            self.vertices[index] = Trustful(index, self.parameters)
+            self.vertices[index] = Trustful(index, capacity, min_link, self.parameters["Heuristic"])
         elif phenotype == "Pessimist":
-            self.vertices[index] = Pessimist(index, self.parameters)
+            self.vertices[index] = Pessimist(index, capacity, min_link, self.parameters["Heuristic"])
         elif phenotype == "Optimist":
-            self.vertices[index] = Optimist(index, self.parameters)
+            self.vertices[index] = Optimist(index, capacity, min_link, self.parameters["Heuristic"])
         elif phenotype == "Envious":
-            self.vertices[index] = Envious(index, self.parameters)
+            self.vertices[index] = Envious(index, capacity, min_link, self.parameters["Heuristic"])
         else:
             raise KeyError("Unsupported phenotype {} in parameters".format(phenotype))
 
@@ -209,9 +245,9 @@ class Network:
             if "Number of groups" in self.parameters:
                 self.init_groups(self.parameters["Number of groups"])
             else:
-                print("INFO: parameter 'Number of groups' found in parameter file")
-                default_value = self.parameters[p_size] // (self.parameters[p_cognitive_c] + 1)
-                print("INFO: Using default value: {}".format(default_value))
+                print("INFO: parameter 'Number of groups' not found in parameter file")
+                default_value = self.parameters[p_size] // int(np.floor(np.min(self.capacity_table) / np.max(self.min_link_table))) + 1
+                print("INFO: Using computed value: {}".format(default_value))
                 self.init_groups(default_value)
         elif mode != "Empty":
             raise KeyError("The initial condition defined by the 'Init' parameters is unknown")
@@ -219,7 +255,7 @@ class Network:
     def init_random(self):
         """Initialize the network with random trust values"""
         trust_adjacency_matrix = np.zeros((self.parameters[p_size], self.parameters[p_size]))
-        create_random_init(trust_adjacency_matrix, self.parameters[p_cognitive_c], self.parameters[p_link_min])
+        create_random_init(trust_adjacency_matrix, self.capacity_table, self.min_link_table)
         self.set_trust_adjacency_matrix(trust_adjacency_matrix)
 
     def init_groups(self, n_group):
@@ -227,8 +263,8 @@ class Network:
         If the size of the network is not divisible by `n_group` then
         creates a smaller group at the end"""
         group_size = self.parameters[p_size] // n_group
-        if group_size - 1 > self.parameters[p_cognitive_c]:
-            raise ValueError("Impossible to create {0} fully connected group with cognitive capacity {1} and network of size {2}".format(n_group, self.parameters[p_cognitive_c], self.parameters[p_size]))
+        if group_size - 1 > np.min(self.capacity_table):
+            raise ValueError("Impossible to create {0} fully connected group with minimum cognitive capacity {1} and network of size {2}".format(n_group, np.min(self.capacity_table), self.parameters[p_size]))
         group_rest = self.parameters[p_size] % n_group
         sizes = np.ones(n_group, dtype=int) * group_size
         if group_rest != 0:
@@ -238,7 +274,7 @@ class Network:
         trust_adjacency_matrix = np.zeros((self.parameters[p_size], self.parameters[p_size]))
         
         for i in range(n_group):
-            create_social_group(sizes[i], assignation, trust_adjacency_matrix, self.parameters[p_link_min])
+            create_social_group(sizes[i], assignation, trust_adjacency_matrix, self.min_link_table)
         self.set_trust_adjacency_matrix(trust_adjacency_matrix)
 
     def interact(self):
@@ -250,8 +286,8 @@ class Network:
         and S \in [0, 10]
         and T \in [5, 15]
         """
-        gain = 1
-        loss = -1
+        gain = 1.
+        loss = -1.
         
         pair = np.random.choice(self.parameters[p_size], 2, replace=False)
         T = np.random.rand()*10 + 5 # Random number between 5 and 15
@@ -330,13 +366,16 @@ class Network:
             if self.verbose:
                 print("Saving in: ", self.out_dir + self.name)
             out = self.out_dir + self.name + "/"
-            self.oper.save(out, reload_context=self._reload_context)
+            self.oper.save(out, self.phenotypes_table, self.capacity_table, self.min_link_table, reload_context=self._reload_context)
             save_parameters(self.parameters, out)
         elif self.parameters["Save mode"] == "Last":
             os.makedirs(self.out_dir, exist_ok=True)
             h5file = h5py.File(self.out_dir + self.name + ".h5", "w")
             h5file["Trust"] = self.get_trust_adjacency_matrix()
             h5file["Link"] = self.get_link_adjacency_matrix()
+            h5file["Phenotype table"] = self.phenotypes_table
+            h5file["Capacity table"] = self.capacity_table
+            h5file["Minimum link table"] = self.min_link_table
             save_parameters_in_hdf5(self.parameters, h5file)
             if self.verbose:
                 print("Saving in: " + self.out_dir + self.name + ".h5")
@@ -364,7 +403,7 @@ class Network:
 
     def get_trust_adjacency_matrix(self):
         """Return the adjacency matrix of all trust"""
-        trust_adjacency_matrix = np.zeros((self.parameters[p_size], self.parameters[p_size]))
+        trust_adjacency_matrix = np.zeros((self.parameters[p_size], self.parameters[p_size]), dtype=float)
         for i in range(self.parameters[p_size]):
             for j in range(self.parameters[p_size]):
                 trust_adjacency_matrix[i, j] = self.get_trust(i, j)
@@ -374,7 +413,7 @@ class Network:
         """Set all trust value to correspond to the adjacency matrix
         The links are updated accordingly automatically"""
         assert adjacency_matrix.shape == (self.parameters[p_size], self.parameters[p_size])
-        assert np.max(np.sum(adjacency_matrix, axis=1)) <= self.parameters[p_cognitive_c]
+        assert np.all(np.sum(adjacency_matrix, axis=1) <= self.capacity_table)
         for i in range(self.parameters[p_size]):
             for j in range(self.parameters[p_size]):
                 if adjacency_matrix[i, j] > 0:
@@ -403,19 +442,27 @@ class Network:
                         elist.append((v.index, w.index, v.trust_in(w), 0))
         return elist
 
+    def get_phenotype_table(self):
+        pass
+
+    def get_min_link_table(self):
+        pass
+
+    def get_capacity_table(self):
+        pass
+
 """Vertex class for handling people"""
 
 class Vertex:
 
     valid_phenotypes = {"Trustful", "Random", "Optimist", "Pessimist", "Envious"}
 
-    def __init__(self, phenotype, index, parameters):
+    def __init__(self, phenotype, index, capacity, link_min):
 
         assert phenotype in self.valid_phenotypes
 
-        self.size = parameters["Community size"]
-        self.capacity = parameters["Cognitive capacity"]
-        self.link_min = parameters["Link minimum"]
+        self.capacity = capacity
+        self.link_min = link_min
         self.phenotype = phenotype
         self.index = index # Must not be changed
         self.load = 0
@@ -438,13 +485,15 @@ class Vertex:
     def update_trust(self, other, increment, oper):
         """Change the trust value of a link according to the response of the other and the expectations of each phenotypes"""
         
-        new_load = self.load + increment
         if other in self.trust:
-            oper.increment_trust(self.index, other.index, max(-self.trust[other], increment))
+            eff_increment = max(-self.trust[other], increment)
+            oper.increment_trust(self.index, other.index, eff_increment)
+            new_load = self.load + eff_increment
             self.trust[other] += increment
             if self.trust[other] <= 0:
                 self.trust.pop(other)
         elif increment > 0:
+            new_load = self.load + increment
             self.trust[other] = increment
             oper.increment_trust(self.index, other.index, increment)
         else:
@@ -457,26 +506,27 @@ class Vertex:
             self.remove_link(other)
             oper.remove_link(self.index, other.index)
 
-        if new_load > self.capacity:
-            diff = new_load - self.capacity
-            while diff > 0:
-                draw = np.random.randint(len(self.trust))
-                drawn_vertex = list(self.trust.keys())[draw]
-                
-                if self.trust[drawn_vertex] > diff:
-                    self.trust[drawn_vertex] -= diff
-                    oper.increment_trust(self.index, drawn_vertex.index, -diff)
-                    diff = 0
-                else:
-                    diff -= self.trust[drawn_vertex]
-                    oper.increment_trust(self.index, drawn_vertex.index, -self.trust[drawn_vertex])
-                    self.trust.pop(drawn_vertex)
+        diff = new_load - self.capacity
+        while diff > 0:
+            draw = np.random.randint(len(self.trust))
+            drawn_vertex = list(self.trust.keys())[draw]
+            
+            if self.trust[drawn_vertex] > diff:
+                self.trust[drawn_vertex] -= diff
+                new_load -= diff
+                oper.increment_trust(self.index, drawn_vertex.index, -diff)
+                diff = 0
+            else:
+                diff -= self.trust[drawn_vertex]
+                new_load -= self.trust[drawn_vertex]
+                oper.increment_trust(self.index, drawn_vertex.index, -self.trust[drawn_vertex])
+                self.trust.pop(drawn_vertex)
 
-                if self.is_linked(drawn_vertex) and self.trust_in(drawn_vertex) < self.link_min:
-                    self.remove_link(drawn_vertex)
-                    oper.remove_link(self.index, drawn_vertex.index)
+            if self.is_linked(drawn_vertex) and self.trust_in(drawn_vertex) < self.link_min:
+                self.remove_link(drawn_vertex)
+                oper.remove_link(self.index, drawn_vertex.index)
 
-        self.load = min(self.capacity, new_load)
+        self.load = new_load
 
     def trust_in(self, end):
         """Return trust value with the vertex `end`"""
@@ -499,9 +549,9 @@ class Vertex:
 
 class Random(Vertex):
 
-    def __init__(self, index, parameters):
-        super().__init__("Random", index, parameters)
-        self.heuristic = parameters["Heuristic"]
+    def __init__(self, index, capacity, min_link, heuristic):
+        super().__init__("Random", index, capacity, min_link)
+        self.heuristic = heuristic
     
     def choose(self, other, game_matrix, temperature):
         """Return the choice of the agent according to the game"""
@@ -528,9 +578,9 @@ class Random(Vertex):
 
 class Trustful(Vertex):
 
-    def __init__(self, index, parameters):
-        super().__init__("Trustful", index, parameters)
-        self.heuristic = parameters["Heuristic"]
+    def __init__(self, index, capacity, min_link, heuristic):
+        super().__init__("Trustful", index, capacity, min_link)
+        self.heuristic = heuristic
     
     def choose(self, other, game_matrix, temperature):
         """Return the choice of the agent according to the game"""
@@ -547,9 +597,9 @@ class Trustful(Vertex):
 
 class Pessimist(Vertex):
 
-    def __init__(self, index, parameters):
-        super().__init__("Pessimist", index, parameters)
-        self.heuristic = parameters["Heuristic"]
+    def __init__(self, index, capacity, min_link, heuristic):
+        super().__init__("Pessimist", index, capacity, min_link)
+        self.heuristic = heuristic
     
     def choose(self, other, game_matrix, temperature):
         """Return the choice of the agent according to the game"""
@@ -580,9 +630,9 @@ class Pessimist(Vertex):
 
 class Optimist(Vertex):
 
-    def __init__(self, index, parameters):
-        super().__init__("Optimist", index, parameters)
-        self.heuristic = parameters["Heuristic"]
+    def __init__(self, index, capacity, min_link, heuristic):
+        super().__init__("Optimist", index, capacity, min_link)
+        self.heuristic = heuristic
     
     def choose(self, other, game_matrix, temperature):
         """Return the choice of the agent according to the game"""
@@ -615,9 +665,9 @@ class Optimist(Vertex):
 
 class Envious(Vertex):
 
-    def __init__(self, index, parameters):
-        super().__init__("Envious", index, parameters)
-        self.heuristic = parameters["Heuristic"]
+    def __init__(self, index, capacity, min_link, heuristic):
+        super().__init__("Envious", index, capacity, min_link)
+        self.heuristic = heuristic
     
     def choose(self, other, game_matrix, temperature):
         """Return the choice of the agent according to the game"""

@@ -72,7 +72,7 @@ class OperationStack:
         if self.activated:
             self.iter_number += 1
 
-    def save(self, dir_path, reload_context=False):
+    def save(self, dir_path, phenotypes_table, capacity_table, min_link_table, reload_context=False):
         """Save the stack in a folder"""
         os.makedirs(dir_path, exist_ok=True)       
         df = pd.DataFrame(self.stacks)
@@ -82,6 +82,9 @@ class OperationStack:
             f = h5py.File(dir_path + "init.h5", 'w')
             f["Trust"] = self.trust
             f["Link"] = self.link
+            f["Phenotype table"] = phenotypes_table
+            f["Capacity table"] = capacity_table
+            f["Minimum link table"] = min_link_table
 
     def load_stack_from_dir(self, dir_path):
         """Set all the stack according to the csv `stack_file`

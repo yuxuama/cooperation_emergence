@@ -12,13 +12,6 @@ from numba.typed.typedlist import List
 from scipy.optimize import curve_fit
 
 ######################################################################################
-# Measure from dataset
-######################################################################################
-
-def measure_global_from_dataset(dataset, quantity, operator):
-    pass
-
-######################################################################################
 # Trust distribution histogram
 ######################################################################################
 
@@ -59,7 +52,7 @@ def histogram(trust_adjacency_matrix, parameters, bins=None):
 # Unified global measuring
 ######################################################################################
 
-def measure_global(quantity, trust_adjacency_matrix, link_adjacency_matrix, parameters, random=False,**rand_kwargs):
+def measure_global(quantity, trust_adjacency_matrix, link_adjacency_matrix, capacity_table, parameters, random=False,**rand_kwargs):
     """Unified method for measurement
     Quantity among: "Asymmetry", "Individual asymmetry", "Saturation rate", "Number of link"
     WARNING: randomized only work for measures on **links**"""
@@ -75,7 +68,7 @@ def measure_global(quantity, trust_adjacency_matrix, link_adjacency_matrix, para
             },
         "Saturation rate": {
             "func": measure_saturation_rate,
-            "param": [trust_adjacency_matrix, parameters]
+            "param": [trust_adjacency_matrix, capacity_table, parameters]
             },
         "Number of link": {
             "func": measure_number_of_link,
@@ -140,14 +133,14 @@ def measure_individual_asymmetry(link_adjacency_matrix, full=False):
         return number_of_asymmetric
     return np.median(number_of_asymmetric)
 
-def measure_saturation_rate(trust_adjacency_matrix, parameters):
+def measure_saturation_rate(trust_adjacency_matrix, capacity_table, parameters):
     """Return the proportion of edje that are saturated"""
     count = 0
     total = trust_adjacency_matrix.shape[0]
 
     for i in range(total):
         sumload = np.sum(trust_adjacency_matrix[i])
-        if sumload == parameters["Cognitive capacity"]:
+        if sumload >= capacity_table[i]:
             count += 1
 
     return count / total
@@ -292,45 +285,102 @@ def compute_randomized(link_adjacency_matrix, mode, mc_iter=10):
     - `'i'`: "in" respect the in degree of each node
     - `'o'`: "out" respect the out degree of each node
     - `'i&&o'`: "in" and "out" respect the composite degree (both in and out degrees)
-    - `'link'`: just reaffect links keeping its number constant"""
+    - `'n-link'`: just reaffect links keeping its number constant
+    - `"pn-link": reaffect links but keeping the number of total links and the proportion of reciprocal link constant`"""
     n = link_adjacency_matrix.shape[0]
-    in_degree = np.sum(link_adjacency_matrix, axis=0)
-    out_degree = np.sum(link_adjacency_matrix, axis=1)
     new_link_adjacency = np.zeros(link_adjacency_matrix.shape, dtype=int)
-    total_link_number = int(np.sum(link_adjacency_matrix))
 
     if mode == "i&&o":
         return monte_carlo_randomisation(mc_iter, link_adjacency_matrix)
-    elif mode == "link":
-        try:
-            draw_link = np.random.choice(n*(n-1), size=total_link_number, replace=False)
-        except:
-            print(link_adjacency_matrix)
-            raise Exception()
-        draw_link.sort()
-        for index in draw_link:
-            i = index // (n-1)
-            j_red = index % (n-1)
-            if j_red >= i:
-                j_red += 1
-            new_link_adjacency[i, j_red] = 1
-        return new_link_adjacency
+    elif mode == "n-link":
+        return nlink_preserving_randomisation(link_adjacency_matrix)
+    elif mode == "pn-link":
+        return pnlink_preserving_randomisation(link_adjacency_matrix)
+    elif mode == "i":
+        return one_degree_preserving_randomisation(link_adjacency_matrix, "in")
+    elif mode == "o":
+        return one_degree_preserving_randomisation(link_adjacency_matrix, "out")
+    else:
+        raise KeyError("Unknown mode for randomisation. It must be in: 'o', 'i', 'i&&o', 'n-link', 'pn-link'")
 
+def one_degree_preserving_randomisation(link_adjacency_matrix, degree):
+    """Return a degree preserving randomisation of the network:
+    Possible values for `degree`:
+    - "in": Preserve in-degree
+    - "out": Preserve out-degree"""
+    n = link_adjacency_matrix.shape[0]
+    new_link_adjacency = np.zeros(link_adjacency_matrix.shape, dtype=int)
+    in_degree = np.sum(link_adjacency_matrix, axis=0)
+    out_degree = np.sum(link_adjacency_matrix, axis=1)
     for i in range(n):
-        if mode == "i":
+        if degree == "in":
             draw = np.random.choice(n-1, in_degree[i], replace=False) # n-1 because a link with oneself is not allowed
             for j in draw:
                 if j < i:
                     new_link_adjacency[j, i] = 1
                 else:
                     new_link_adjacency[j+1, i] = 1
-        elif mode == "o":
+        elif degree == "out":
             draw = np.random.choice(n-1, out_degree[i], replace=False)
             for j in draw:
                 if j < i:
                     new_link_adjacency[i, j] = 1
                 else:
                     new_link_adjacency[i, j+1] = 1
+        else:
+            raise KeyError("Unknown mode for one-degree preserving randomisation")
+    return new_link_adjacency
+
+def nlink_preserving_randomisation(link_adjacency_matrix):
+    """Return a randomised version of the network with the same number of edges"""
+    n = link_adjacency_matrix.shape[0]
+    new_link_adjacency = np.zeros(link_adjacency_matrix.shape, dtype=int)
+    total_link_number = int(np.sum(link_adjacency_matrix))
+    try:
+        draw_link = np.random.choice(n*(n-1), size=total_link_number, replace=False)
+    except:
+        raise Exception("Can't draw random links")
+    draw_link.sort()
+    for index in draw_link:
+        i = index // (n-1)
+        j_red = index % (n-1)
+        if j_red >= i:
+            j_red += 1
+        new_link_adjacency[i, j_red] = 1
+    return new_link_adjacency
+
+def pnlink_preserving_randomisation(link_adjacency_matrix):
+    """Return a randomised version of the network with the same number of edges
+    and with the same proportion of reciprocal link"""
+    n = link_adjacency_matrix.shape[0]
+    new_link_adjacency = np.zeros(link_adjacency_matrix.shape, dtype=int)
+    total_reciprocal_link = int(np.trace(link_adjacency_matrix @ link_adjacency_matrix)) // 2
+    min_unidirectional_link = int(np.sum(link_adjacency_matrix)) - total_reciprocal_link
+    link = []
+    # Create only unidirectional link
+    draw_unidirectionals = np.random.choice(n * (n-1) // 2, size=min_unidirectional_link, replace=False)
+    for t in range(min_unidirectional_link):
+        index = draw_unidirectionals[t]
+        p = n-1
+        i = 0
+        j = index % p + 1
+        while index // p > 0:
+            i += 1
+            index = index - p
+            p -= 1
+            j = i+1+index
+        if np.random.random(1) > 0.5:
+            drawn_link = (i, j)
+        else:
+            drawn_link = (j, i)
+        new_link_adjacency[drawn_link[0], drawn_link[1]] = 1
+        link.append(drawn_link)
+
+    # Create reciprocal link using existing unidirectional links
+    draw_reciprocal = np.random.choice(len(link), size=total_reciprocal_link, replace=False)
+    for index in draw_reciprocal:
+        drawn_link = link[index]
+        new_link_adjacency[drawn_link[1], drawn_link[0]] = 1
 
     return new_link_adjacency
     
@@ -457,12 +507,13 @@ if __name__ == "__main__":
     test = np.random.randint(2, size=36).reshape((6, 6))
     for i in range(test.shape[0]):
         test[i, i] = 0
-    in_degrees = np.sum(test, axis=0)
-    out_degrees = np.sum(test, axis=1)
+    number_reciprocal = int(np.trace(test @ test)) // 2
     print(test)
+    print(number_reciprocal)
     print(np.sum(test))
-    net_rand = compute_randomized(test, "link")
+    net_rand = compute_randomized(test, "pn-link")
     print(net_rand)
+    print(int(np.trace(net_rand @ net_rand)) // 2)
     print(np.sum(net_rand))
     #print(in_degrees == np.sum(net_rand, axis=0))
     #print(out_degrees == np.sum(net_rand, axis=1))

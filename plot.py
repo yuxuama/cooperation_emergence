@@ -127,11 +127,10 @@ def plot_hist_by_phenotype(dataset, quantity, **plot_kwargs):
 
 def plot_diadic_pattern(dataset, **plot_kwargs):
     """Plot bar graph with diadic pattern repartition per phenotype"""
-    dta = dataset.group_by("Phenotype").aggregate((".", "<-", "->", "<->"))
-    global_dta = dataset.aggregate((".", "<-", "->", "<->"))
-    possible_phenotype = sorted(list(dta.keys()))
+    possible_fields = list(dataset.get_item(".").keys())
+    dta = dataset.aggregate(possible_fields)
     fig_layout = [(1, 2), (1, 3), (2, 3), (2, 3), (2, 3)]
-    layout = fig_layout[dta.size - 1]
+    layout = fig_layout[len(possible_fields) - 2]
     fig, ax = plt.subplots(layout[0], layout[1], figsize=(10, 6))
     for i in range(layout[0]):
         for j in range(layout[1]):
@@ -141,40 +140,39 @@ def plot_diadic_pattern(dataset, **plot_kwargs):
                 selector = (i, j)
             index = i * layout[1] + j
             if index == dta.size:
-                no_link = sum(global_dta.get_item(".").get_all_item().values())
-                in_link = sum(global_dta.get_item("<-").get_all_item().values())
-                out_link = sum(global_dta.get_item("->").get_all_item().values())
-                bi_link = sum(global_dta.get_item("<->").get_all_item().values())
-                data = [no_link, in_link, out_link, bi_link]
                 title = "Global"
             else:
-                no_link = sum(dta.get_item(possible_phenotype[index]).get_item(".").get_all_item().values())
-                in_link = sum(dta.get_item(possible_phenotype[index]).get_item("<-").get_all_item().values())
-                out_link = sum(dta.get_item(possible_phenotype[index]).get_item("->").get_all_item().values())
-                bi_link = sum(dta.get_item(possible_phenotype[index]).get_item("<->").get_all_item().values())
-                data = [no_link, in_link, out_link, bi_link]
-                title = possible_phenotype[index]
-            ax[selector].bar(["0", "<--", "-->", "<->"], data, **plot_kwargs)
+                title = possible_fields[index]
+            data = dta.get_item(possible_fields[index]).get_all_item()
+            ax[selector].bar(list(data.keys()), list(data.values()), **plot_kwargs)
             ax[selector].set_title(title)
             ax[selector].set_ylabel("Occurences")
     fig.suptitle("Diadic pattern @ iter {}".format(dataset.niter))
     return ax
 
 def plot_bar_diadic_pattern(dataset, **plot_kwargs):
-    dta = dataset.group_by("Phenotype").aggregate((".", "<-", "->", "<->"))
-    possible_phenotype = sorted(list(dta.keys()))
-    link_type = ["0", "<--", "-->", "<->"]
+    possible_phenotype = list(dataset.get_item(".").keys())
+    dta = dataset.aggregate(possible_phenotype)
     bottom = np.zeros(4)
     ax = plt.subplot(1, 1, 1)
-    for i in range(len(possible_phenotype)):
-        no_link = sum(dta.get_item(possible_phenotype[i]).get_item(".").get_all_item().values())
-        in_link = sum(dta.get_item(possible_phenotype[i]).get_item("<-").get_all_item().values())
-        out_link = sum(dta.get_item(possible_phenotype[i]).get_item("->").get_all_item().values())
-        bi_link = sum(dta.get_item(possible_phenotype[i]).get_item("<->").get_all_item().values())
-        data = np.array([no_link, in_link, out_link, bi_link])
-        ax.bar(link_type, data, bottom=bottom, label=possible_phenotype[i], **plot_kwargs)
-        bottom += data
+    for i in range(len(possible_phenotype)-1):
+        ph = possible_phenotype[i]
+        data = dta.get_item(ph).get_all_item()
+        ax.bar(list(data.keys()), np.array(list(data.values()))/2, bottom=bottom, label=ph, **plot_kwargs)
+        bottom += np.array(list(data.values()))/2
     ax.set_title("Diadic pattern @ inter {}".format(dataset.niter))
+    ax.set_ylabel("Occurences")
+    plt.legend()
+
+def plot_bar_diadic_pattern_from_hist(freq_dict_hist, diadic_list, **plot_kwargs):
+    bottom = np.zeros(4)
+    ax = plt.subplot(1, 1, 1)
+    for ph in freq_dict_hist.keys():
+        if ph != "Number":
+            data = freq_dict_hist[ph] / 2
+            ax.bar(diadic_list, data, bottom=bottom, label=ph, **plot_kwargs)
+        bottom += data
+    ax.set_title("Diadic pattern from hist")
     ax.set_ylabel("Occurences")
     plt.legend()
 
@@ -218,9 +216,9 @@ def plot_triadic_pattern(triadic_dataset, selector="Number", triangle_only=False
 
     _, ax = plt.subplots(1, 1, figsize=(8, 5))
 
-    data = np.array(data.values())
+    data = np.array(list(data.values()))
     if triangle_only:
-        data = np.array(data.values())[3::]
+        data = np.array(list(data.values()))[3::]
 
     ax.bar(range(0, len(data)*2, 2), data, width=1, align="center", **plot_kwargs)
     ax.tick_params(axis='x', which='both', labelbottom=False, top=False, bottom=False)
@@ -229,7 +227,7 @@ def plot_triadic_pattern(triadic_dataset, selector="Number", triangle_only=False
         title = "Global"
     else:
         title = selector
-    ax.set_title("Triadic pattern frequency for {0} @ inter {1}".format(selector, triadic_dataset.niter))
+    ax.set_title("Triadic pattern frequency for {0} @ inter {1}".format(title, triadic_dataset.niter))
 
     for i in range(0, len(data)*2, 2):
         if triangle_only:
@@ -306,7 +304,7 @@ def plot_triadic_pattern_phenotype_from_hist(freq_dict_hist, triangle_list, tria
     for ph in freq_dict_hist.keys():
         if ph != "Number":
             values = freq_dict_hist[ph]
-            ax.bar(range(0, len(values)*2, 2), values, width=1, align="center", bottom=bottom, label=ph, **plot_kwargs)
+            ax.bar(range(0, values.size*2, 2), values, width=1, align="center", bottom=bottom, label=ph, **plot_kwargs)
             bottom += values
     ax.tick_params(axis='x', which='both', labelbottom=False, top=False, bottom=False)
     ax.set_ylabel("Occurences")

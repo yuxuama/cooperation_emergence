@@ -342,29 +342,54 @@ def stack_dataset(ds1: Dataset, ds2: Dataset):
 # Dataset measure
 ################################################################################################
 
-def measure_frequency_diadic_pattern(link_adjacency_matrix, phenotype_table, niter):
+def measure_frequency_diadic_pattern(link_adjacency_matrix, parameters, niter):
     """Measure the frequency of each diadic pattern"""
     pattern_freq = Dataset("Diadic", niter)
+    possible_phenotype = list(parameters["Strategy distributions"].keys())
+    possible_phenotype.append("Number")
+    possible_pattern = [".", "->", "<-", "<->"]
+    for pattern in possible_pattern:
+        pattern_freq.add(pattern, {ph: 0 for ph in possible_phenotype})
+    phenotype_table = get_vertex_distribution(parameters)
     size = link_adjacency_matrix.shape[0]
     for i in range(size):
-        pattern_freq.add(i, {".": 0, "->": 0, "<-": 0,"<->": 0, "Phenotype": phenotype_table[i]})
-    for i in range(size):
         for j in range(i+1, size):
+            ph_i = phenotype_table[i]
+            ph_j = phenotype_table[j]
             if link_adjacency_matrix[i, j] == link_adjacency_matrix[j, i]:
                 if link_adjacency_matrix[i, j] > 0:
-                    pattern_freq.modify_field_in_id(i, "<->", 1, mode="+")
-                    pattern_freq.modify_field_in_id(j, "<->", 1, mode="+")
+                    pattern_freq.modify_field_in_id("<->", ph_i, 1, mode="+")
+                    pattern_freq.modify_field_in_id("<->", ph_j, 1, mode="+")
+                    pattern_freq.modify_field_in_id("<->", "Number", 1, mode="+")
                 else:
-                    pattern_freq.modify_field_in_id(i, ".", 1, mode="+")
-                    pattern_freq.modify_field_in_id(j, ".", 1, mode="+")
+                    pattern_freq.modify_field_in_id(".", ph_i, 1, mode="+")
+                    pattern_freq.modify_field_in_id(".", ph_j, 1, mode="+")
+                    pattern_freq.modify_field_in_id(".", "Number", 1, mode="+")
             else:
                 if link_adjacency_matrix[i, j] > 0:
-                    pattern_freq.modify_field_in_id(i, "->", 1, mode="+")
-                    pattern_freq.modify_field_in_id(j, "<-", 1, mode="+")
+                    pattern_freq.modify_field_in_id("->", ph_i, 1, mode="+")
+                    pattern_freq.modify_field_in_id("<-", ph_j, 1, mode="+")
+                    pattern_freq.modify_field_in_id("<-", "Number", 1, mode="+")
+                    pattern_freq.modify_field_in_id("->", "Number", 1, mode="+")
                 else:
-                    pattern_freq.modify_field_in_id(j, "->", 1, mode="+")
-                    pattern_freq.modify_field_in_id(i, "<-", 1, mode="+")
+                    pattern_freq.modify_field_in_id("<-", ph_i, 1, mode="+")
+                    pattern_freq.modify_field_in_id("->", ph_j, 1, mode="+")
+                    pattern_freq.modify_field_in_id("<-", "Number", 1, mode="+")
+                    pattern_freq.modify_field_in_id("->", "Number", 1, mode="+")
+    
     return pattern_freq
+
+def compute_diadic_histogram(di_pattern_dtg, parameters):
+    freq = {"Number": np.zeros(16)}
+    possible_phenotype = parameters["Strategy distributions"].keys()
+    for ph in possible_phenotype:
+        freq[ph] = np.zeros(16)
+    
+    data_dtg = di_pattern_dtg.aggregate(freq.keys())
+    for key in freq.keys():
+        freq[key] = np.array(list(data_dtg.get_item(key).get_all_item().values()))
+    triangle_name = list(data_dtg.get_item("Number").get_all_item().keys())
+    return freq, triangle_name
 
 def get_phenotype_code(ph1, ph2):
     """Return the phenotype code of the link between the two agents with
@@ -564,13 +589,13 @@ def compute_triadic_histogram(triadic_pattern_dtg, parameters):
     of triangle frequencies
     Return the frequency dict of each phenotype and the triangle name list associated"""
     freq = {"Number": np.zeros(16)}
-    possible_phenotype = parameters["Strategy distribution"].keys()
+    possible_phenotype = parameters["Strategy distributions"].keys()
     for ph in possible_phenotype:
         freq[ph] = np.zeros(16)
     
     data_dtg = triadic_pattern_dtg.aggregate(freq.keys())
     for key in freq.keys():
-        freq[key] = np.array(data_dtg.get_item(key).get_all_item().values())
+        freq[key] = np.array(list(data_dtg.get_item(key).get_all_item().values()))
     triangle_name = list(data_dtg.get_item("Number").get_all_item().keys())
     return freq, triangle_name
 

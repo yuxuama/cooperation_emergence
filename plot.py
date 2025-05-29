@@ -281,7 +281,7 @@ def plot_triadic_pattern_phenotype(triadic_dataset, parameters, triangle_only=Fa
     
     return ax
 
-def plot_triadic_pattern_phenotype_from_hist(freq_dict_hist, triangle_list, triangle_only=False, **plot_kwargs):
+def plot_triadic_pattern_phenotype_from_hist(freq_dict_hist, triangle_list, err=None, triangle_only=False, **plot_kwargs):
 
     def get_image(name):
         path = r"C:\Users\Matthieu\Documents\_Travail\Stages\Stage M1\Workspace\image\triadic_{}.png".format(name)
@@ -303,9 +303,12 @@ def plot_triadic_pattern_phenotype_from_hist(freq_dict_hist, triangle_list, tria
         bottom = bottom[3::]
     for ph in freq_dict_hist.keys():
         if ph != "Number":
-            values = freq_dict_hist[ph]
+            values = freq_dict_hist[ph] / 3
             ax.bar(range(0, values.size*2, 2), values, width=1, align="center", bottom=bottom, label=ph, **plot_kwargs)
             bottom += values
+
+    if not err is None:
+        ax.errorbar(range(0, values.size*2, 2), freq_dict_hist["Number"], xerr=err, fmt="k+", ecolor="k")
     ax.tick_params(axis='x', which='both', labelbottom=False, top=False, bottom=False)
     ax.set_ylabel("Occurences")
     ax.set_title("Triadic pattern frequency from histogram")

@@ -559,3 +559,20 @@ def measure_triadic_pattern_phenotype_combination(link_adjacency_matrix, paramet
                     dt.add(detected, {"Number": 1})
     return dtg
 
+def compute_triadic_histogram(triadic_pattern_dtg, parameters):
+    """Compute the frequency of each motives based on `triadic_pattern_dtg` the DatasetGroup
+    of triangle frequencies
+    Return the frequency dict of each phenotype and the triangle name list associated"""
+    freq = {"Number": np.zeros(16)}
+    possible_phenotype = parameters["Strategy distribution"].keys()
+    for ph in possible_phenotype:
+        freq[ph] = np.zeros(16)
+    
+    data_dtg = triadic_pattern_dtg.aggregate(freq.keys())
+    for key in freq.keys():
+        freq[key] = np.array(data_dtg.get_item(key).get_all_item().values())
+    triangle_name = list(data_dtg.get_item("Number").get_all_item().keys())
+    return freq, triangle_name
+
+
+

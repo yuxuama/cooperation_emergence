@@ -283,6 +283,44 @@ def plot_triadic_pattern_phenotype(triadic_dataset, parameters, triangle_only=Fa
     
     return ax
 
+def plot_triadic_pattern_phenotype_from_hist(freq_dict_hist, triangle_list, triangle_only=False, **plot_kwargs):
+
+    def get_image(name):
+        path = r"C:\Users\Matthieu\Documents\_Travail\Stages\Stage M1\Workspace\image\triadic_{}.png".format(name)
+        im = plt.imread(path)
+        return im
+
+    def offset_image(coord, name, ax):
+        img = get_image(name)
+        im = OffsetImage(img, zoom=0.2)
+        im.image.axes = ax
+        ab = AnnotationBbox(im, (coord, 0),  xybox=(0., -16.), frameon=False,
+                            xycoords='data',  boxcoords="offset points", pad=0)
+        ax.add_artist(ab)
+
+    _, ax = plt.subplots(1, 1, figsize=(8, 5))
+
+    bottom = np.zeros(16)
+    if triangle_only:
+        bottom = bottom[3::]
+    for ph in freq_dict_hist.keys():
+        if ph != "Number":
+            values = freq_dict_hist[ph]
+            ax.bar(range(0, len(values)*2, 2), values, width=1, align="center", bottom=bottom, label=ph, **plot_kwargs)
+            bottom += values
+    ax.tick_params(axis='x', which='both', labelbottom=False, top=False, bottom=False)
+    ax.set_ylabel("Occurences")
+    ax.set_title("Triadic pattern frequency from histogram")
+    ax.legend()
+
+    for i in range(0, len(values)*2, 2):
+        if triangle_only:
+            offset_image(i, triangle_list[i//2+3], ax)
+        else:
+            offset_image(i, triangle_list[i//2], ax)
+    
+    return ax
+
 def plot_phenotype_combination_per_triangle(triangle_id, combination_dt, th=0):
     """Plot for the triangle with `triangle_id` the possible combination of phenotype calculated in
     `combination_dt` with number of occurences above `th`"""

@@ -4,8 +4,6 @@ Execute simulation of the interacting network
 from graph import Network
 from utils import parse_parameters
 import numpy as np
-from dataset import measure_triadic_pattern_phenotype_combination
-from plot import plot_phenotype_combination_per_triangle
 from tqdm import tqdm
 import matplotlib.pyplot as plt 
 

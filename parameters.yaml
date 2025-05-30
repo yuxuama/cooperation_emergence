@@ -23,7 +23,7 @@ Cognitive capacity:
   Mean: 750
   Sigma: 100
 Heuristic: "SITH" # Among "SITH", "Complex", "RTH"
-Temperature: 0.25
+Temperature: 0
 
 # Valid phenotypes (with caps): Trustful, Random, Optimistic, Pessimist, Envious
 Strategy distributions:

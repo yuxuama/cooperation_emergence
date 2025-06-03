@@ -22,7 +22,7 @@ Link minimum:
 Cognitive capacity:
   Mean: 750
   Sigma: 100
-Heuristic: "SITH" # Among "SITH", "Complex", "RTH"
+Heuristic: "RTH" # Among "SITH", "Complex", "RTH"
 Temperature: 0.25
 
 # Valid phenotypes (with caps): Trustful, Random, Optimistic, Pessimist, Envious

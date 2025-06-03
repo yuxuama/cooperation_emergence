@@ -308,7 +308,7 @@ def plot_triadic_pattern_phenotype_from_hist(freq_dict_hist, triangle_list, err=
             bottom += values
 
     if not err is None:
-        ax.errorbar(range(0, values.size*2, 2), freq_dict_hist["Number"], xerr=err, fmt="k+", ecolor="k")
+        ax.errorbar(range(0, values.size*2, 2), freq_dict_hist["Number"], yerr=err, fmt="k+", ecolor="k")
     ax.tick_params(axis='x', which='both', labelbottom=False, top=False, bottom=False)
     ax.set_ylabel("Occurences")
     ax.set_title("Triadic pattern frequency from histogram")
